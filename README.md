@@ -1,6 +1,6 @@
-# SunCalc
+# Zenith
 
-An interactive solar and lunar calculator with a live Mapbox map. Click anywhere on the map (or search for a location) to instantly see sun and moon data for that point at any date and time.
+Zenith is an interactive solar and lunar calculator with a live Mapbox map. Click anywhere on the map (or search for a location) to instantly see sun and moon data for that point at any date and time.
 
 ## Features
 
@@ -33,3 +33,19 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Deployment (GitHub Pages)
+
+- Ensure the `homepage` field in `package.json` is set to `https://zenith.robertvelardejr.com`.
+- Add a `CNAME` file to `public/` containing `zenith.robertvelardejr.com` (this repo now includes one).
+- Install the deployment helper: `npm install --save-dev gh-pages`.
+- Publish the production build to GitHub Pages with:
+
+```bash
+npm run deploy
+```
+
+- In your GitHub repository settings -> **Pages**, confirm the source branch is `gh-pages` (root). The `CNAME` file and the Pages settings should point the custom domain to `zenith.robertvelardejr.com`.
+- Ensure your DNS provider (NameCheap) has a CNAME record for `zenith` pointing to `robertvelarde.github.io`.
+
+Optionally, use a GitHub Actions workflow to build and push to `gh-pages` automatically on push to `main`.
