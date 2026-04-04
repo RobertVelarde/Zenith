@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@import "mapbox-gl/dist/mapbox-gl.css";
+
+:root {
+  --glass-bg: rgba(15, 23, 42, 0.78);
+  --glass-border: rgba(148, 163, 184, 0.18);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+/* Firefox fallback: if backdrop-filter is unsupported, use a more opaque bg */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: rgba(15, 23, 42, 0.92);
+  }
+  .glass-light {
+    background: rgba(255, 255, 255, 0.94);
+  }
+}
+
+/* Light-mode glass: stronger background for legibility */
+.glass-light {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+}
+
+/* Range sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  height: 20px;           /* container matches thumb height for full click area */
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 14px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.2);
+}
+input[type="range"]::-moz-range-track {
+  height: 14px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.2);
+  border: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f59e0b;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  transform: translateY(3px); /* center thumb over 14px track */
+}
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f59e0b;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  transform: translateY(3px); /* Firefox: shift to vertically center */
+}
+
+/* Sliders with a custom gradient track overlay: make native track transparent */
+.time-slider-over-gradient,
+.year-slider-over-gradient {
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+.time-slider-over-gradient::-webkit-slider-runnable-track,
+.year-slider-over-gradient::-webkit-slider-runnable-track {
+  background: transparent !important;
+}
+.time-slider-over-gradient::-moz-range-track,
+.year-slider-over-gradient::-moz-range-track {
+  background: transparent !important;
+}
+
+/* Date input dark theme */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.7);
+}
