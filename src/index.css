@@ -4,6 +4,10 @@
 :root {
   --glass-bg: rgba(15, 23, 42, 0.78);
   --glass-border: rgba(148, 163, 184, 0.18);
+
+  /* Slider geometry — keep in sync with SLIDER in src/config.js */
+  --slider-track-height: 14px;
+  --slider-thumb-size: 20px;
 }
 
 body {
@@ -60,7 +64,17 @@ input[type="range"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  height: 20px;           /* container matches thumb height for full click area */
+  /*
+   * display: block eliminates the inline-block baseline descender gap that
+   * browsers add below inline/inline-block elements inside a block container.
+   * Without this the parent .relative div is ~26px tall (input 20px + ~6px
+   * descender space), which shifts the top-1/2 -translate-y-1/2 gradient
+   * overlay 3px lower than the input's own vertical center.
+   */
+  display: block;
+  /* Container height = thumb size so the full thumb area is clickable */
+  height: var(--slider-thumb-size);
+  width: 100%;
   background: transparent;
   padding: 0;
   margin: 0;
@@ -68,12 +82,12 @@ input[type="range"] {
   cursor: pointer;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 14px;
+  height: var(--slider-track-height);
   border-radius: 9999px;
   background: rgba(148, 163, 184, 0.2);
 }
 input[type="range"]::-moz-range-track {
-  height: 14px;
+  height: var(--slider-track-height);
   border-radius: 9999px;
   background: rgba(148, 163, 184, 0.2);
   border: none;
@@ -81,24 +95,38 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
   border-radius: 50%;
   background: #f59e0b;
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-  transform: translateY(3px); /* center thumb over 14px track */
+  /*
+   * WebKit positions the thumb so its top edge aligns with the track's top
+   * edge by default (when appearance: none is set). Shift UP by half the
+   * size difference to vertically center the thumb on the track.
+   *
+   * Formula: (trackHeight - thumbSize) / 2
+   * = (14px - 20px) / 2 = -3px
+   *
+   * Using custom properties avoids hardcoded pixel drift on high-DPI displays
+   * and keeps this in sync with --slider-track-height / --slider-thumb-size.
+   */
+  margin-top: calc((var(--slider-track-height) - var(--slider-thumb-size)) / 2);
 }
 input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
   border-radius: 50%;
   background: #f59e0b;
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-  transform: translateY(3px); /* Firefox: shift to vertically center */
+  /*
+   * Firefox naturally centers the thumb on the track — no offset required.
+   * (Any translateY here would push the thumb off-center.)
+   */
 }
 
 /* Sliders with a custom gradient track overlay: make native track transparent */

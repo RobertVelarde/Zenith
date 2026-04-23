@@ -1,0 +1,101 @@
+name: Test & Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+# Grant the GITHUB_TOKEN permission to push to the gh-pages branch
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Run Playwright tests
+  # Chromium and Firefox run reliably on Ubuntu runners.
+  # WebKit / mobile-safari tests should be run locally before pushing.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Playwright Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (Chromium + Firefox only)
+        run: npx playwright install --with-deps chromium firefox
+
+      # vite.config.js throws if .env.local is absent in development mode.
+      # Tests start a dev server via Playwright's webServer; give it a
+      # placeholder token so Vite launches without a real secret.
+      - name: Create .env.local for test dev server
+        run: echo "VITE_MAPBOX_TOKEN=pk.test_placeholder" > .env.local
+
+      - name: Run Playwright tests (Chromium + Firefox)
+        run: npx playwright test --project=chromium --project=firefox
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Build and deploy (only after tests pass)
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # vite.config.js reads .env (production mode) and throws if it is absent.
+      # Write the token from the repository secret into the file ephemerally.
+      - name: Create .env for production build
+        run: echo "VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}" > .env
+
+      - name: Build production bundle
+        run: npm run build
+
+      # public/CNAME is copied into dist/ by Vite automatically.
+      # Confirm it landed so the custom domain is never silently lost.
+      - name: Verify CNAME is present in dist
+        run: |
+          if [ ! -f dist/CNAME ]; then
+            echo "ERROR: dist/CNAME is missing. Add a CNAME file to public/." >&2
+            exit 1
+          fi
+          echo "CNAME OK: $(cat dist/CNAME)"
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: zenith.robertvelardejr.com

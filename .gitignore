@@ -12,11 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Playwright artefacts
+playwright-report/
+test-results/
+tests/screenshots/
+
+# Vite / npm dev server output logs
+dev-out.txt
+dev-err.txt
+
 # Environment files (local secrets)
 .env
 .env.*
 !.env.example
-!.env
 
 # Editor directories and files
 .vscode/*

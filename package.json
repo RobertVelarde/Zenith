@@ -10,7 +10,10 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
@@ -33,6 +36,7 @@
     "globals": "^17.4.0",
     "tailwindcss": "^4.2.2",
     "dotenv": "^16.3.1",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "@playwright/test": "^1.52.0"
   }
 }
