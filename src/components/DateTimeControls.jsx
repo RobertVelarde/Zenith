@@ -212,7 +212,7 @@ export default function DateTimeControls({
           type="date"
           value={dateStr}
           onChange={handleDateInput}
-          className={`w-full rounded-lg px-3 py-1.5 text-sm outline-none
+          className={`w-full max-w-full appearance-none rounded-lg px-3 py-1.5 text-sm outline-none
             ${isLight
               ? 'bg-black/5 border border-black/10 text-slate-900 focus:border-amber-500/70'
               : 'bg-white/5 border border-white/10 text-white focus:border-amber-500/50'}`}

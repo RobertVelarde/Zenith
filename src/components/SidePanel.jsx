@@ -176,6 +176,22 @@ export default function SidePanel({
     return () => window.removeEventListener('resize', update);
   }, [peeked, peekZoneHeight]);
 
+  // Keep a stable ref to onCenterMap so the peeked effect below can always
+  // call the latest version without listing it as a dependency (which would
+  // cause spurious re-centres on every coords change).
+  const onCenterMapRef = useRef(onCenterMap);
+  useEffect(() => { onCenterMapRef.current = onCenterMap; }, [onCenterMap]);
+
+  // When the panel opens or closes on mobile, re-centre the map inside the
+  // visible (unobscured).
+  const isFirstPeekEffect = useRef(true);
+  useEffect(() => {
+    if (isFirstPeekEffect.current) { isFirstPeekEffect.current = false; return; }
+    if (window.innerWidth >= 768) return;
+    const id = setTimeout(() => onCenterMapRef.current());
+    return () => clearTimeout(id);
+  }, [peeked]);
+
   // Only apply the peek translateY on mobile (< 768 px).
   const peekStyle =
     peeked && peekZoneHeight > 0 && window.innerWidth < 768
