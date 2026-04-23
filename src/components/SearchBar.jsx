@@ -69,7 +69,7 @@ export default function SearchBar({ onSelect, isLight }) {
           onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
           onFocus={() => results.length && setOpen(true)}
           placeholder={LABELS.searchPlaceholder}
-          className={`bg-transparent text-sm outline-none w-full ${isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-gray-500'}`}
+          className={`bg-transparent text-xs outline-none w-full ${isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-gray-500'}`}
         />
         {query && (
           <button onClick={() => { setQuery(''); setResults([]); }} className={`text-xs ${isLight ? 'text-slate-400 hover:text-slate-700' : 'text-gray-500 hover:text-white'}`}>

@@ -13,7 +13,7 @@ import SolarInfo from './SolarInfo';
 import LunarInfo from './LunarInfo';
 import AdvancedPanel from './AdvancedPanel';
 import ExternalLinks from './ExternalLinks';
-import { LABELS, MAPBOX_TOKEN, API } from '../config';
+import { LABELS, MAPBOX_TOKEN, API, DEFAULT_ZOOM } from '../config';
 import { useNotification } from '../hooks/notificationContext';
 
 export default function SidePanel({
@@ -59,6 +59,15 @@ export default function SidePanel({
   const borderColor = isLight ? 'border-slate-200' : 'border-white/5';
 
   const [use24h, setUse24h] = useState(false);
+
+  // ── Tap-flash state for instant-action buttons ─────────────────────────────
+  const [titleFlash,  setTitleFlash]  = useState(false);
+  const [coordsFlash, setCoordsFlash] = useState(false);
+  const flashBtn = (setFlash, timeout) => {
+    setFlash(true);
+    setTimeout(() => setFlash(false), timeout);
+  };
+  const cyanFlash = 'bg-cyan-400 text-black shadow-[0_0_12px_2px_rgba(34,211,238,0.45)]';
 
   // ── Mobile header bar states ───────────────────────────────────────────────
   const [searchActive, setSearchActive]     = useState(false);
@@ -380,8 +389,8 @@ export default function SidePanel({
 
               {/* 1. Title — clicking centers the map in the visible area on all breakpoints with Selected style */}
               <button
-                onClick={onCenterMap}
-                className={`shrink-0 h-9 px-2.5 text-lg font-semibold tracking-wide flex items-center ${textPrimary}`}
+                onClick={() => { flashBtn(setTitleFlash, 250); onCenterMap(); }}
+                className={`shrink-0 h-9 px-2.5 text-lg font-semibold tracking-wide flex items-center rounded-xl transition-all duration-200 ${titleFlash ? cyanFlash : textPrimary}`}
               >
                 {LABELS.appTitle}
               </button>
@@ -401,7 +410,7 @@ export default function SidePanel({
               {/* 2. Middle area — inner h-9 box clips height; relative wrapper
                    lets the desktop dropdown escape that clip boundary.        */}
               <div className="relative flex-1 min-w-0">
-                <div className="h-9 overflow-hidden">
+                <div className="h-9">
                   {settingsActive ? (
 
                     /* Settings mode: Dark Mode + Satellite toggles. */
@@ -489,21 +498,25 @@ export default function SidePanel({
 
                   ) : (
 
-                    /* Normal mode: coordinates — tap to copy. */
+                    /* Normal mode: coordinates — tap to copy */
                     <button
                       onClick={() => {
                         if (!coords) return;
-                        const text = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+                        flashBtn(setCoordsFlash, 1000);
+                        const text = "";
                         navigator.clipboard.writeText(text).then(
                           () => notify('Coordinates copied!'),
                           () => notify('Copy failed', 'warn'),
                         );
                       }}
-                      className={`h-full w-full px-2.5 rounded-xl ${glassClass} text-xs font-mono text-left truncate ${textPrimary} flex items-center`}
+                      style={coordsFlash ? { background: '#22d3ee', color: '#000', boxShadow: '0 0 12px 2px rgba(34,211,238,0.45)' } : undefined}
+                      className={`h-full w-full px-2.5 rounded-xl ${glassClass} text-xs font-mono text-left truncate flex items-center transition-all duration-200 ${textPrimary}`}
                     >
-                      {coords
-                        ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
-                        : <span className={isLight ? 'text-slate-400' : 'text-gray-500'}>No location</span>
+                      {coordsFlash
+                        ? 'Coordinates copied!'
+                        : coords
+                          ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+                          : <span className={isLight ? 'text-slate-400' : 'text-gray-500'}>No location</span>
                       }
                     </button>
 
@@ -557,6 +570,40 @@ export default function SidePanel({
               </button>
 
             </div>
+
+            {/* Overlay Scale slider — lives in the peek zone so it's accessible
+                 even when the panel is collapsed to just the header bar.        */}
+            <div
+              className={`px-3 pb-2 border-t ${borderColor}`}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mt-2 mb-1">
+                <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Overlay Scale
+                </label>
+                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                  {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
+                    : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
+                    : 'Default'}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={9}
+                max={17}
+                step={0.01}
+                value={overlayZoom ?? DEFAULT_ZOOM}
+                onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+                className="w-full"
+              />
+              <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+                <span>Far</span>
+                <span>Default</span>
+                <span>Close</span>
+              </div>
+            </div>
+
           </div>
           {/* ── End panel header ─────────────────────────────────────────────── */}
 
@@ -580,8 +627,6 @@ export default function SidePanel({
               use24h={use24h}
               coords={coords}
               isLight={isLight}
-              overlayZoom={overlayZoom}
-              onOverlayZoomChange={onOverlayZoomChange}
             />
 
             <div className={`border-t ${borderColor} pt-3`}>
