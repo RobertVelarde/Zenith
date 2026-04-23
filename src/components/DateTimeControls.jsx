@@ -11,7 +11,7 @@
 import { useMemo } from 'react';
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
-import { LABELS, TWILIGHT_COLORS, YEARLY_GRADIENT_PALETTE, SLIDER } from '../config';
+import { LABELS, TWILIGHT_COLORS, YEARLY_GRADIENT_PALETTE, SLIDER, DEFAULT_ZOOM } from '../config';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function mToHHMM(m) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; }
@@ -175,6 +175,8 @@ export default function DateTimeControls({
   use24h,
   coords,
   isLight,
+  overlayZoom,
+  onOverlayZoomChange,
 }) {
   const dateStr = `${year}-${pad(month)}-${pad(day)}`;
   const doy = useMemo(() => dateToDoy(new Date(year, month - 1, day)), [year, month, day]);
@@ -205,6 +207,32 @@ export default function DateTimeControls({
 
   return (
     <div className="space-y-3">
+      {/* Overlay scale slider — zoom 9 (far out) → 17 (close in) */}
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+            Overlay Scale
+          </label>
+          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+            {overlayZoom < DEFAULT_ZOOM ? 'Zoomed Out' : overlayZoom > DEFAULT_ZOOM ? 'Zoomed In' : 'Default'}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={9}
+          max={17}
+          step={0.01}
+          value={overlayZoom ?? DEFAULT_ZOOM}
+          onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+          className="w-full"
+        />
+        <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+          <span>Far</span>
+          <span>Default</span>
+          <span>Close</span>
+        </div>
+      </div>
+
       {/* Date picker */}
       <div>
         <label className={`text-[10px] uppercase tracking-wider mb-1 block ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.dateLabel}</label>

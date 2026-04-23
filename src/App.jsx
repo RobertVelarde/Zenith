@@ -13,7 +13,7 @@ import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
 import { NotificationProvider } from './hooks/useNotification';
-import { DEFAULT_COORDS, TRANSITIONS, OVERLAY_RADIUS } from './config';
+import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS } from './config';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -39,6 +39,11 @@ function AppContent() {
   const [timeMinutes, setTimeMinutes] = useState(currentMinutes());
   const [mapStyle, setMapStyle] = useState('dark');
   const [panelOpen, setPanelOpen] = useState(true);
+  const [overlayZoom, setOverlayZoom] = useState(DEFAULT_ZOOM);
+
+  // Overlay radius scales with the chosen zoom level so arcs/lines always
+  // fit the visible map area regardless of how far the user has zoomed in.
+  const overlayRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - overlayZoom);
 
   const mapRef = useRef(null);
 
@@ -62,8 +67,8 @@ function AppContent() {
   const handleCenterMap = useCallback(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
-    // Bounding box that contains all arcs/lines drawn at OVERLAY_RADIUS from coords.
-    const r = OVERLAY_RADIUS * 1.35; // 35 % margin so edges aren't clipped
+    // Bounding box that contains all arcs/lines drawn at overlayRadius from coords.
+    const r = overlayRadius * 1.35; // 35 % margin so edges aren't clipped
     const latCos = Math.cos((coords.lat * Math.PI) / 180);
     const sw = [coords.lng - r / latCos, coords.lat - r];
     const ne = [coords.lng + r / latCos, coords.lat + r];
@@ -79,12 +84,34 @@ function AppContent() {
         : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
       duration: TRANSITIONS.flyToDuration,
     });
-  }, [coords, mapRef]);
+  }, [coords, mapRef, overlayRadius]);
 
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
     mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: 13, duration: TRANSITIONS.flyToDuration });
   }, [setCoords, mapRef]);
+
+  const handleOverlayZoomChange = useCallback((newZoom) => {
+    setOverlayZoom(newZoom);
+    const map = mapRef.current;
+    if (!map || !coords) return;
+    const newRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - newZoom);
+    const r = newRadius * 1.35;
+    const latCos = Math.cos((coords.lat * Math.PI) / 180);
+    const sw = [coords.lng - r / latCos, coords.lat - r];
+    const ne = [coords.lng + r / latCos, coords.lat + r];
+    const isMobile = window.innerWidth < 768;
+    const panelVisibleH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
+      10,
+    );
+    map.fitBounds([sw, ne], {
+      padding: isMobile
+        ? { top: 24, right: 24, bottom: panelVisibleH + 24, left: 24 }
+        : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
+      duration: TRANSITIONS.flyToDuration,
+    });
+  }, [coords, mapRef]);
 
   const handleDateChange = useCallback((y, m, d) => {
     setYear(y);
@@ -101,6 +128,7 @@ function AppContent() {
         moonTrajectory={moonTrajectory}
         sunData={sunData}
         moonData={moonData}
+        overlayRadius={overlayRadius}
         onMapClick={handleMapClick}
         mapRef={mapRef}
       />
@@ -123,6 +151,8 @@ function AppContent() {
         onTimeChange={setTimeMinutes}
         onStyleChange={setMapStyle}
         onCenterMap={handleCenterMap}
+        overlayZoom={overlayZoom}
+        onOverlayZoomChange={handleOverlayZoomChange}
       />
 
       <NotificationToast />

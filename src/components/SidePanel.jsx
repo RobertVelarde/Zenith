@@ -31,6 +31,8 @@ export default function SidePanel({
   onTimeChange,
   onStyleChange,
   onCenterMap,
+  overlayZoom,
+  onOverlayZoomChange,
 }) {
   const { notify } = useNotification();
 
@@ -578,6 +580,8 @@ export default function SidePanel({
               use24h={use24h}
               coords={coords}
               isLight={isLight}
+              overlayZoom={overlayZoom}
+              onOverlayZoomChange={onOverlayZoomChange}
             />
 
             <div className={`border-t ${borderColor} pt-3`}>

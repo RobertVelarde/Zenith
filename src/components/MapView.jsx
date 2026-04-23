@@ -55,6 +55,7 @@ export default function MapView({
   moonTrajectory,
   sunData,
   moonData,
+  overlayRadius,
   onMapClick,
   mapRef,
 }) {
@@ -64,8 +65,8 @@ export default function MapView({
 
   // Ref that always holds the latest overlay data so the style.load handler
   // can push it synchronously without waiting for a React re-render.
-  const overlayDataRef = useRef({ coords, sunTrajectory, moonTrajectory, sunData, moonData });
-  overlayDataRef.current = { coords, sunTrajectory, moonTrajectory, sunData, moonData };
+  const overlayDataRef = useRef({ coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius });
+  overlayDataRef.current = { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius };
 
   // Track which Mapbox style URL is currently applied so the switch-style
   // effect can skip the initial no-op.
@@ -145,8 +146,8 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData });
-  }, [coords, sunTrajectory, moonTrajectory, sunData, moonData, mapRef]);
+    pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius });
+  }, [coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, mapRef]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 w-full h-full" />
@@ -171,14 +172,15 @@ function setSourceData(map, id, data) {
  * @param {mapboxgl.Map} map - The Mapbox instance.
  * @param {Object} payload   - Contains coords, sunTrajectory, moonTrajectory, sunData, moonData.
  */
-function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData }) {
+function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius = OVERLAY_RADIUS }) {
   if (!coords) return;
   const { lat, lng } = coords;
-  setSourceData(map, 'sun-arc', sunTrajectory ? sunArcGeoJSON(sunTrajectory, lat, lng) : EMPTY_FC);
-  setSourceData(map, 'sun-lines', sunData ? sunLinesGeoJSON(sunData, lat, lng) : EMPTY_FC);
-  setSourceData(map, 'sun-point', sunData ? sunPointGeoJSON(sunData, lat, lng) : EMPTY_FC);
-  setSourceData(map, 'moon-arc', moonTrajectory ? moonArcGeoJSON(moonTrajectory, lat, lng) : EMPTY_FC);
-  setSourceData(map, 'moon-point', moonData ? moonPointGeoJSON(moonData, lat, lng) : EMPTY_FC);
+  const r = overlayRadius;
+  setSourceData(map, 'sun-arc', sunTrajectory ? sunArcGeoJSON(sunTrajectory, lat, lng, r) : EMPTY_FC);
+  setSourceData(map, 'sun-lines', sunData ? sunLinesGeoJSON(sunData, lat, lng, r) : EMPTY_FC);
+  setSourceData(map, 'sun-point', sunData ? sunPointGeoJSON(sunData, lat, lng, r) : EMPTY_FC);
+  setSourceData(map, 'moon-arc', moonTrajectory ? moonArcGeoJSON(moonTrajectory, lat, lng, r) : EMPTY_FC);
+  setSourceData(map, 'moon-point', moonData ? moonPointGeoJSON(moonData, lat, lng, r) : EMPTY_FC);
 }
 
 /**
