@@ -139,13 +139,13 @@ export const API = {
 // UI Labels  (single source for future i18n / localization)
 // =============================================================================
 export const LABELS = {
-  appTitle:      'Solar & Lunar Calc',
+  appTitle:      'Zenith',
   searchPlaceholder: 'Search location…',
 
   // Layer toggle
   layers: {
-    dark:      { label: 'Dark',      icon: '🌑' },
-    light:     { label: 'Light',     icon: '☀️' },
+    dark:      { label: 'Dark',      icon: '⚫' },
+    light:     { label: 'Light',     icon: '⚪' },
     satellite: { label: 'Satellite', icon: '🛰️' },
   },
 
@@ -157,7 +157,6 @@ export const LABELS = {
 
   // Solar section
   solarHeader:   'Solar',
-  solarIcon:     '☀️',
   sunrise:       'Sunrise',
   goldenHourAM:  'Golden Hour AM',
   solarNoon:     'Solar Noon',
@@ -169,7 +168,6 @@ export const LABELS = {
 
   // Lunar section
   lunarHeader:   'Lunar',
-  lunarIcon:     '🌙',
   moonrise:      'Moonrise',
   moonset:       'Moonset',
   alwaysUp:      'Always up',
@@ -194,8 +192,8 @@ export const LABELS = {
   // External links
   copyLabel:     'Copy',
   copiedLabel:   '✓ Copied',
-  googleMaps:    '📍 Google Maps',
-  weather:       '🌤️ Weather',
+  googleMaps:    'Google Maps',
+  weather:       'Windy.com',
 
   // Notifications
   geolocationDenied: 'Location access denied — using default coordinates.',

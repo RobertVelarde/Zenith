@@ -81,6 +81,7 @@ export default function MapView({
         center: [coords.lng, coords.lat],
         zoom: DEFAULT_ZOOM,
         attributionControl: false,
+        zoomControl: false,
       });
     } catch {
       notify(LABELS.mapLoadFailed, 'error');

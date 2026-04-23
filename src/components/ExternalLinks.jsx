@@ -40,7 +40,7 @@ export default function ExternalLinks({ coords, isLight }) {
           href={googleUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex-1 text-center text-[10px] ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-300 hover:text-white'} glass rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors`}
+          className={`flex-1 text-center text-[10px] ${isLight ? 'text-slate-600 hover:text-slate-900 glass-light' : 'text-gray-300 hover:text-white glass'} rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors`}
         >
           {LABELS.googleMaps}
         </a>
@@ -48,7 +48,7 @@ export default function ExternalLinks({ coords, isLight }) {
           href={windyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex-1 text-center text-[10px] ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-300 hover:text-white'} glass rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors`}
+          className={`flex-1 text-center text-[10px] ${isLight ? 'text-slate-600 hover:text-slate-900 glass-light' : 'text-gray-300 hover:text-white glass'} rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors`}
         >
           {LABELS.weather}
         </a>

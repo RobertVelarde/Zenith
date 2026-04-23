@@ -174,6 +174,7 @@ export default function DateTimeControls({
   onDateChange, onTimeChange,
   use24h,
   coords,
+  isLight,
 }) {
   const dateStr = `${year}-${pad(month)}-${pad(day)}`;
   const doy = useMemo(() => dateToDoy(new Date(year, month - 1, day)), [year, month, day]);
@@ -206,20 +207,23 @@ export default function DateTimeControls({
     <div className="space-y-3">
       {/* Date picker */}
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 block">{LABELS.dateLabel}</label>
+        <label className={`text-[10px] uppercase tracking-wider mb-1 block ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.dateLabel}</label>
         <input
           type="date"
           value={dateStr}
           onChange={handleDateInput}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-amber-500/50"
+          className={`w-full rounded-lg px-3 py-1.5 text-sm outline-none
+            ${isLight
+              ? 'bg-black/5 border border-black/10 text-slate-900 focus:border-amber-500/70'
+              : 'bg-white/5 border border-white/10 text-white focus:border-amber-500/50'}`}
         />
       </div>
 
       {/* Yearly slider */}
       <div>
         <div className="flex justify-between items-center mb-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">{LABELS.yearlyLabel}</label>
-          <span className="text-[10px] text-gray-400">{LABELS.dayPrefix} {doy}</span>
+          <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.yearlyLabel}</label>
+          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{LABELS.dayPrefix} {doy}</span>
         </div>
         <div className="relative">
           <div
@@ -235,7 +239,7 @@ export default function DateTimeControls({
             className="w-full year-slider-over-gradient"
           />
         </div>
-        <div className="flex justify-between text-[9px] text-gray-600 mt-0.5 px-0.5">
+        <div className={`flex justify-between text-[9px] mt-0.5 px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
           {monthLabels.map((m) => <span key={m}>{m}</span>)}
         </div>
       </div>
@@ -243,8 +247,8 @@ export default function DateTimeControls({
       {/* Time slider with day/night gradient */}
       <div>
         <div className="flex justify-between items-center mb-1">
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">{LABELS.timeLabel}</label>
-          <span className="text-xs font-mono text-amber-400">{use24h ? mToHHMM(timeMinutes) : mTo12h(timeMinutes)}</span>
+          <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.timeLabel}</label>
+          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{use24h ? mToHHMM(timeMinutes) : mTo12h(timeMinutes)}</span>
         </div>
         <div className="relative">
           {/* Gradient track behind the native slider */}
@@ -261,7 +265,7 @@ export default function DateTimeControls({
             className="w-full time-slider-over-gradient"
           />
         </div>
-        <div className="flex justify-between text-[9px] text-gray-600 mt-0.5">
+        <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
           {use24h
             ? (<><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span></>)
             : (<><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></>)

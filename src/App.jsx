@@ -13,7 +13,7 @@ import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
 import { NotificationProvider } from './hooks/useNotification';
-import { DEFAULT_COORDS, TRANSITIONS } from './config';
+import { DEFAULT_COORDS, TRANSITIONS, OVERLAY_RADIUS } from './config';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -59,6 +59,28 @@ function AppContent() {
     mapRef.current?.flyTo({ center: [c.lng, c.lat], duration: TRANSITIONS.clickFlyTo });
   }, [setCoords, mapRef]);
 
+  const handleCenterMap = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !coords) return;
+    // Bounding box that contains all arcs/lines drawn at OVERLAY_RADIUS from coords.
+    const r = OVERLAY_RADIUS * 1.35; // 35 % margin so edges aren't clipped
+    const latCos = Math.cos((coords.lat * Math.PI) / 180);
+    const sw = [coords.lng - r / latCos, coords.lat - r];
+    const ne = [coords.lng + r / latCos, coords.lat + r];
+    const isMobile = window.innerWidth < 768;
+    // Read the full visible panel height (bar-only when peeked, full when open).
+    const panelVisibleH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
+      10,
+    );
+    map.fitBounds([sw, ne], {
+      padding: isMobile
+        ? { top: 24, right: 24, bottom: panelVisibleH + 24, left: 24 }
+        : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
+      duration: TRANSITIONS.flyToDuration,
+    });
+  }, [coords, mapRef]);
+
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
     mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: 13, duration: TRANSITIONS.flyToDuration });
@@ -100,6 +122,7 @@ function AppContent() {
         onDateChange={handleDateChange}
         onTimeChange={setTimeMinutes}
         onStyleChange={setMapStyle}
+        onCenterMap={handleCenterMap}
       />
 
       <NotificationToast />

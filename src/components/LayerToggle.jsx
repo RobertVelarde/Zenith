@@ -27,9 +27,7 @@ export default function LayerToggle({ current, onChange }) {
             title={s.label}
             className={`
               w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all
-              ${current === key
-                ? 'glass border-amber-500/50 shadow-lg shadow-amber-500/10'
-                : 'glass hover:bg-white/10 opacity-70 hover:opacity-100'}
+              'glass hover:bg-white/10 opacity-70 hover:opacity-100'}
             `}
           >
             {s.icon}

@@ -40,7 +40,7 @@ export default function LunarInfo({ moonData, timezone, isLight, use24h }) {
   return (
     <div className="space-y-0.5">
       <h3 className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} uppercase tracking-wider mb-1 flex items-center gap-1.5`}>
-        <span className="text-base">{LABELS.lunarIcon}</span> {LABELS.lunarHeader}
+        <span className="text-base">{LABELS.lunarHeader}</span>
       </h3>
 
       {/* Phase */}

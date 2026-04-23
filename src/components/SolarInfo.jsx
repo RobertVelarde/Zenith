@@ -39,7 +39,7 @@ export default function SolarInfo({ sunData, timezone, isLight, use24h }) {
   return (
     <div className="space-y-0.5">
       <h3 className={`text-xs font-semibold ${isLight ? 'text-amber-600' : 'text-amber-400'} uppercase tracking-wider mb-1 flex items-center gap-1.5`}>
-        <span className="text-base">{LABELS.solarIcon}</span> {LABELS.solarHeader}
+        <span className="text-base">{LABELS.solarHeader}</span> 
       </h3>
       <DataRow label={LABELS.sunrise} value={`${fmt(t.sunrise)}${srAz}`} color="text-orange-300" isLight={isLight} />
       <DataRow label={LABELS.goldenHourAM} value={fmt(t.goldenHourEnd)} color="text-amber-200" isLight={isLight} />

@@ -48,21 +48,6 @@ export default function AdvancedPanel({ sunData, timezone, elevation, isLight, u
 
       {open && (
         <div className="space-y-0.5 pt-1 animate-in fade-in">
-          {/* Time format toggle */}
-          <div className="flex justify-between items-center py-1">
-            <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{LABELS.timeFormat}</span>
-            <button
-              onClick={onToggle24h}
-              className={`text-[11px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
-                use24h
-                  ? (isLight ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-amber-500/20 border-amber-400/40 text-amber-300')
-                  : (isLight ? 'bg-slate-100 border-slate-300 text-slate-600' : 'bg-white/10 border-white/20 text-gray-300')
-              }`}
-            >
-              {use24h ? LABELS.format24h : LABELS.format12h}
-            </button>
-          </div>
-
           {elevation != null && (
             <DataRow label={LABELS.elevation} value={`${elevation.toFixed(0)} m`} isLight={isLight} />
           )}
