@@ -257,11 +257,14 @@ export default function SidePanel({
   useEffect(() => { onCenterMapRef.current = onCenterMap; }, [onCenterMap]);
 
   // When the panel opens or closes on mobile, re-centre the map inside the
-  // visible (unobscured).
+  // visible (unobscured). When collapsing, also scroll the body back to top.
   const isFirstPeekEffect = useRef(true);
   useEffect(() => {
     if (isFirstPeekEffect.current) { isFirstPeekEffect.current = false; return; }
     if (window.innerWidth >= 768) return;
+    if (peeked && scrollBodyRef.current) {
+      scrollBodyRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
     const id = setTimeout(() => onCenterMapRef.current());
     return () => clearTimeout(id);
   }, [peeked]);
@@ -641,40 +644,42 @@ export default function SidePanel({
 
             </div>
 
-            {/* Overlay Scale slider — lives in the peek zone so it's accessible
-                 even when the panel is collapsed to just the header bar.        */}
-            <div
-              className={`px-3 pb-2 border-t ${borderColor}`}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mt-2 mb-1">
-                <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                  Overlay Scale
-                </label>
-                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                  {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
-                    : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
-                    : 'Default'}
-                </span>
+            {/* Overlay Scale slider — shown in the header bar when peeked on mobile,
+                 or always on desktop/tablet. Moves to the scroll body when open on mobile. */}
+            {(peeked || window.innerWidth >= 768) && (
+              <div
+                className={`px-3 pb-2 border-t ${borderColor}`}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mt-2 mb-1">
+                  <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Overlay Scale
+                  </label>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
+                      : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
+                      : 'Default'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={9}
+                  max={17}
+                  step={0.01}
+                  value={overlayZoom ?? DEFAULT_ZOOM}
+                  onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <span>Far</span>
+                  <span>Default</span>
+                  <span>Close</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={9}
-                max={17}
-                step={0.01}
-                value={overlayZoom ?? DEFAULT_ZOOM}
-                onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
-                className="w-full"
-              />
-              <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
-                <span>Far</span>
-                <span>Default</span>
-                <span>Close</span>
-              </div>
-            </div>
-
+            )}
           </div>
+
           {/* ── End panel header ─────────────────────────────────────────────── */}
 
           {/* ── Scrollable body ───────────────────────────────────────────────── */}
@@ -689,6 +694,35 @@ export default function SidePanel({
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >
+            {/* Overlay Scale slider — shown here when the panel is fully open on mobile */}
+            {(!peeked && window.innerWidth < 768) && (
+              <div className={`pb-3 border-b ${borderColor}`}>
+                <div className="flex justify-between items-center mb-1">
+                  <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Overlay Scale
+                  </label>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
+                      : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
+                      : 'Default'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={9}
+                  max={17}
+                  step={0.01}
+                  value={overlayZoom ?? DEFAULT_ZOOM}
+                  onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <span>Far</span>
+                  <span>Default</span>
+                  <span>Close</span>
+                </div>
+              </div>
+            )}
             <DateTimeControls
               year={year}
               month={month}
