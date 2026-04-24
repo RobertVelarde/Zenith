@@ -522,7 +522,7 @@ export default function SidePanel({
                         onClick={() => {
                           const next = !use24h;
                           setUse24h(next);
-                          onStyleChange( isDark ? 'dark' : 'light');
+                          onStyleChange( isSatellite ? 'satellite' :isDark ? 'dark' : 'light');
                         }}
                         className={`flex-1 h-full flex items-center justify-center rounded-xl
                           text-xs font-medium transition-all duration-200 border
