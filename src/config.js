@@ -122,6 +122,15 @@ export const TRANSITIONS = {
 };
 
 // =============================================================================
+// Zenith Button Behavior
+// =============================================================================
+export const ZENITH = {
+  /** How long (ms) the user must hold the Zenith button before geolocation
+   *  is requested and the button turns gold. Adjust to taste. */
+  holdDelay: 600,
+};
+
+// =============================================================================
 // API Configuration
 // =============================================================================
 export const API = {

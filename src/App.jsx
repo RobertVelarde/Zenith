@@ -13,7 +13,7 @@ import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
 import { NotificationProvider } from './hooks/useNotification';
-import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS } from './config';
+import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH } from './config';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -53,7 +53,13 @@ function AppContent() {
 
   /* ---- Custom hooks ---- */
   const { timezone, elevation } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
-  useGeolocation(setCoords, mapRef);
+  const { geolocate } = useGeolocation(setCoords, mapRef);
+
+  // Track whether the Zenith button is in its "gold" / my-location state.
+  const [zenithGold, setZenithGold] = useState(false);
+  // Track whether the Zenith button was tapped to center the map; stays
+  // blue until the user touches the map again.
+  const [zenithBlue, setZenithBlue] = useState(false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
     coords, year, month, day, timeMinutes, timezone,
@@ -62,12 +68,31 @@ function AppContent() {
   const { heading } = useCompassHeading();
 
   /* ---- Handlers ---- */
+  // Called when the user manually picks a location — keep the title button
+  // blue because the view recenters on the selected point.
   const handleMapClick = useCallback((c) => {
     setCoords(c);
+    setZenithGold(false);
+    setZenithBlue(true);
     mapRef.current?.flyTo({ center: [c.lng, c.lat], duration: TRANSITIONS.clickFlyTo });
   }, [setCoords, mapRef]);
 
+  // Clear blue/gold when the user interacts with the map (pan/zoom/touch).
+  const handleUserInteraction = useCallback(() => {
+    setZenithBlue(false);
+    setZenithGold(false);
+  }, [setZenithBlue, setZenithGold]);
+
+  // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
+  // Optimistically turns the button gold, then requests geolocation; reverts
+  // the gold state if the permission is denied.
+  const handleZenithHold = useCallback(() => {
+    setZenithGold(true);
+    geolocate({ onError: () => setZenithGold(false) });
+  }, [geolocate]);
+
   const handleCenterMap = useCallback(() => {
+    setZenithBlue(true);
     const map = mapRef.current;
     if (!map || !coords) return;
     // Bounding box that contains all arcs/lines drawn at overlayRadius from coords.
@@ -91,10 +116,20 @@ function AppContent() {
 
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
+    // When a new location is chosen (search / tap), keep the title button
+    // blue so the UI indicates the view is locked to the selected point.
+    setZenithGold(false);
+    setZenithBlue(true);
     mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: 13, duration: TRANSITIONS.flyToDuration });
   }, [setCoords, mapRef]);
 
+  // Called when the Zenith title/button is tapped to center the map.
+  const handleZenithTap = useCallback(() => {
+    handleCenterMap();
+  }, [handleCenterMap]);
+
   const handleOverlayZoomChange = useCallback((newZoom) => {
+    setZenithBlue(true);
     setOverlayZoom(newZoom);
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -135,6 +170,7 @@ function AppContent() {
         heading={heading}
         onMapClick={handleMapClick}
         mapRef={mapRef}
+        onUserInteraction={handleUserInteraction}
       />
 
       <SidePanel
@@ -157,6 +193,10 @@ function AppContent() {
         onCenterMap={handleCenterMap}
         overlayZoom={overlayZoom}
         onOverlayZoomChange={handleOverlayZoomChange}
+        onZenithHold={handleZenithHold}
+        zenithGold={zenithGold}
+        onZenithTap={handleZenithTap}
+        zenithBlue={zenithBlue}
       />
 
       <NotificationToast />

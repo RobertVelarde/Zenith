@@ -13,7 +13,7 @@ import SolarInfo from './SolarInfo';
 import LunarInfo from './LunarInfo';
 import AdvancedPanel from './AdvancedPanel';
 import ExternalLinks from './ExternalLinks';
-import { LABELS, MAPBOX_TOKEN, API, DEFAULT_ZOOM } from '../config';
+import { LABELS, MAPBOX_TOKEN, API, DEFAULT_ZOOM, ZENITH } from '../config';
 import { useNotification } from '../hooks/notificationContext';
 
 export default function SidePanel({
@@ -33,6 +33,10 @@ export default function SidePanel({
   onCenterMap,
   overlayZoom,
   onOverlayZoomChange,
+  onZenithHold,
+  zenithGold,
+  onZenithTap,
+  zenithBlue,
 }) {
   const { notify } = useNotification();
 
@@ -68,6 +72,31 @@ export default function SidePanel({
     setTimeout(() => setFlash(false), timeout);
   };
   const cyanFlash = 'bg-cyan-400 text-black shadow-[0_0_12px_2px_rgba(34,211,238,0.45)]';
+  const goldStyle = 'bg-amber-400 text-black shadow-[0_0_14px_3px_rgba(251,191,36,0.65)]';
+
+  // ── Zenith button hold-to-geolocate ────────────────────────────────────────
+  const holdTimerRef       = useRef(null);
+  const longPressTriggered = useRef(false);
+
+  const onZenithPointerDown = useCallback(() => {
+    longPressTriggered.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      onZenithHold?.();
+    }, ZENITH.holdDelay);
+  }, [onZenithHold]);
+
+  const onZenithPointerUp = useCallback(() => {
+    clearTimeout(holdTimerRef.current);
+  }, []);
+
+  const onZenithClick = useCallback(() => {
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      return; // long-press already handled; skip centering
+    }
+    onZenithTap?.();
+  }, [onZenithTap]);
 
   // ── Mobile header bar states ───────────────────────────────────────────────
   const [searchActive, setSearchActive]     = useState(false);
@@ -174,14 +203,28 @@ export default function SidePanel({
   //                     full panel when open)
   useEffect(() => {
     const update = () => {
+      // Desktop: panel doesn't affect map height.
       if (window.innerWidth >= 768) {
         document.documentElement.style.setProperty('--panel-visible-h', '0px');
         return;
       }
+
       const h = panelRef.current?.offsetHeight ?? 0;
-      const visibleH = peeked ? peekZoneHeight : h;
+      let visibleH = peeked ? peekZoneHeight : h;
+
+      // When fully open on mobile, cap the visible panel height so the
+      // remaining map area is at least square (height >= width). That means
+      // panel visible height <= window.innerHeight - window.innerWidth.
+      if (!peeked) {
+        const maxVisible = Math.max(0, window.innerHeight - window.innerWidth);
+        if (maxVisible > 0) {
+          visibleH = Math.min(visibleH, maxVisible);
+        }
+      }
+
       document.documentElement.style.setProperty('--panel-visible-h', `${visibleH}px`);
     };
+
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -268,8 +311,8 @@ export default function SidePanel({
   }, [peeked]);
 
   const panelStyle = liveTransform !== null
-    ? { transform: `translateY(${liveTransform}px)`, transition: 'none' }
-    : peekStyle;
+    ? { transform: `translateY(${liveTransform}px)`, transition: 'none', willChange: 'transform' }
+    : peekStyle ? { ...peekStyle, willChange: 'transform' } : undefined;
 
   // ── Search results positioning ─────────────────────────────────────────────
   // The results list must float just above the top of the panel, wherever it
@@ -387,10 +430,16 @@ export default function SidePanel({
           >
             <div className="flex items-center gap-1.5 px-2 py-2">
 
-              {/* 1. Title — clicking centers the map in the visible area on all breakpoints with Selected style */}
+              {/* 1. Title — short tap centers the map; hold requests geolocation */}
               <button
-                onClick={() => { flashBtn(setTitleFlash, 250); onCenterMap(); }}
-                className={`shrink-0 h-9 px-2.5 text-lg font-semibold tracking-wide flex items-center rounded-xl transition-all duration-200 ${titleFlash ? cyanFlash : textPrimary}`}
+                onClick={onZenithClick}
+                onPointerDown={onZenithPointerDown}
+                onPointerUp={onZenithPointerUp}
+                onPointerLeave={onZenithPointerUp}
+                onPointerCancel={onZenithPointerUp}
+                className={`shrink-0 h-9 px-2.5 text-lg font-semibold tracking-wide flex items-center rounded-xl transition-all duration-200 ${
+                  zenithGold ? goldStyle : (zenithBlue || titleFlash) ? cyanFlash : textPrimary
+                }`}
               >
                 {LABELS.appTitle}
               </button>
@@ -613,7 +662,7 @@ export default function SidePanel({
             onTouchStart={onScrollBodyTouchStart}
             onTouchEnd={onScrollBodyTouchEnd}
             className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-3 space-y-4
-                        touch-pan-y md:touch-auto max-h-[60vh] md:max-h-none ${isLight ? 'light-panel' : ''}`}
+                        touch-pan-y md:touch-auto max-h-[calc(100vh-100vw)] pb-[0vw] md:max-h-none ${isLight ? 'light-panel' : ''}`}
           >
             <DateTimeControls
               year={year}

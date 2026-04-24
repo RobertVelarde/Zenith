@@ -61,6 +61,7 @@ export default function MapView({
   heading,
   onMapClick,
   mapRef,
+  onUserInteraction,
 }) {
   const containerRef = useRef(null);
   const markerRef = useRef(null);
@@ -70,6 +71,11 @@ export default function MapView({
   // can push it synchronously without waiting for a React re-render.
   const overlayDataRef = useRef({ coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading });
   overlayDataRef.current = { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading };
+
+  // Stable ref for the optional onUserInteraction callback so listeners
+  // don't need re-registering when the prop changes.
+  const onUserInteractionRef = useRef(onUserInteraction);
+  useEffect(() => { onUserInteractionRef.current = onUserInteraction; }, [onUserInteraction]);
 
   // Track which Mapbox style URL is currently applied so the switch-style
   // effect can skip the initial no-op.
@@ -106,6 +112,19 @@ export default function MapView({
       onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
 
+    // Consider genuine user-initiated movements (drag/wheel) as user
+    // interaction. Programmatic camera moves (flyTo / fitBounds) do not
+    // include an originalEvent on the Mapbox event, so we check for it.
+    const emitInteraction = (ev) => {
+      if (!ev || !ev.originalEvent) return; // ignore programmatic moves
+      onUserInteractionRef.current?.();
+    };
+    map.on('movestart', emitInteraction);
+    map.on('dragstart', emitInteraction);
+    const container = containerRef.current;
+    const wheelHandler = (ev) => { onUserInteractionRef.current?.(); };
+    if (container) container.addEventListener('wheel', wheelHandler, { passive: true });
+
     map.on('error', (e) => {
       // Suppress tile-level 404s (expected), surface real errors.
       if (e?.error?.status !== 404) {
@@ -118,6 +137,9 @@ export default function MapView({
       .addTo(map);
 
     return () => {
+      map.off('movestart', emitInteraction);
+      map.off('dragstart', emitInteraction);
+      if (container) container.removeEventListener('wheel', wheelHandler);
       map.remove();
       mapRef.current = null;
     };
