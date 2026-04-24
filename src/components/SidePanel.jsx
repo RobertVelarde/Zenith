@@ -230,6 +230,26 @@ export default function SidePanel({
     return () => window.removeEventListener('resize', update);
   }, [peeked, peekZoneHeight]);
 
+  // ── Scroll-body max height ──────────────────────────────────────────────────
+  // Cap total panel height (header + body) to (vh − vw) so the remaining map
+  // area is at least a square. Recomputed whenever the header height or the
+  // viewport dimensions change.
+  const [scrollBodyMaxH, setScrollBodyMaxH] = useState(null);
+
+  useEffect(() => {
+    const update = () => {
+      if (window.innerWidth >= 768) {
+        setScrollBodyMaxH(null); // desktop: panel is side-docked, no constraint
+        return;
+      }
+      const maxPanel = window.innerHeight - window.innerWidth;
+      setScrollBodyMaxH(Math.max(0, maxPanel - peekZoneHeight));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [peekZoneHeight]);
+
   // Keep a stable ref to onCenterMap so the peeked effect below can always
   // call the latest version without listing it as a dependency (which would
   // cause spurious re-centres on every coords change).
@@ -662,7 +682,8 @@ export default function SidePanel({
             onTouchStart={onScrollBodyTouchStart}
             onTouchEnd={onScrollBodyTouchEnd}
             className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-3 space-y-4
-                        touch-pan-y md:touch-auto max-h-[calc(100vh-100vw)] pb-[0vw] md:max-h-none ${isLight ? 'light-panel' : ''}`}
+                        touch-pan-y md:touch-auto ${isLight ? 'light-panel' : ''}`}
+            style={scrollBodyMaxH !== null ? { maxHeight: scrollBodyMaxH } : undefined}
           >
             <DateTimeControls
               year={year}

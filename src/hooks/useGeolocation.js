@@ -11,17 +11,16 @@
 
 import { useCallback } from 'react';
 import { useNotification } from './notificationContext';
-import { LABELS, TRANSITIONS } from '../config';
+import { LABELS } from '../config';
 
 /**
- * Returns a `geolocate({ onError })` function that requests the user's
- * position and flies the map to the result.
+ * Returns a `geolocate({ onSuccess, onError })` function that requests the
+ * user's position and invokes the appropriate callback with the result.
  *
- * @param {Function} setCoords   - State setter for `{ lat, lng }`.
- * @param {React.MutableRefObject} mapRef - Ref to the Mapbox map instance.
+ * @param {Function} setCoords - State setter for `{ lat, lng }`.
  * @returns {{ geolocate: Function }}
  */
-export function useGeolocation(setCoords, mapRef) {
+export function useGeolocation(setCoords) {
   const { notify } = useNotification();
 
   const geolocate = useCallback((opts = {}) => {
@@ -34,11 +33,7 @@ export function useGeolocation(setCoords, mapRef) {
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(coords);
-        mapRef.current?.flyTo({
-          center: [coords.lng, coords.lat],
-          zoom: 13,
-          duration: TRANSITIONS.flyToDuration,
-        });
+        opts.onSuccess?.(coords);
       },
       () => {
         notify(LABELS.geolocationDenied, 'info');
@@ -46,7 +41,7 @@ export function useGeolocation(setCoords, mapRef) {
       },
       { timeout: 5000, enableHighAccuracy: false },
     );
-  }, [setCoords, mapRef, notify]);
+  }, [setCoords, notify]);
 
   return { geolocate };
 }

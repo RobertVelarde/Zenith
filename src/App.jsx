@@ -53,13 +53,17 @@ function AppContent() {
 
   /* ---- Custom hooks ---- */
   const { timezone, elevation } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
-  const { geolocate } = useGeolocation(setCoords, mapRef);
+  const { geolocate } = useGeolocation(setCoords);
 
   // Track whether the Zenith button is in its "gold" / my-location state.
   const [zenithGold, setZenithGold] = useState(false);
   // Track whether the Zenith button was tapped to center the map; stays
   // blue until the user touches the map again.
   const [zenithBlue, setZenithBlue] = useState(false);
+  // Tracks whether the current coords came from geolocation. When true,
+  // re-centering restores gold (not blue) because the location is still
+  // the user's physical position.
+  const isGeolocatedRef = useRef(false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
     coords, year, month, day, timeMinutes, timezone,
@@ -72,6 +76,7 @@ function AppContent() {
   // blue because the view recenters on the selected point.
   const handleMapClick = useCallback((c) => {
     setCoords(c);
+    isGeolocatedRef.current = false;
     setZenithGold(false);
     setZenithBlue(true);
     mapRef.current?.flyTo({ center: [c.lng, c.lat], duration: TRANSITIONS.clickFlyTo });
@@ -83,23 +88,18 @@ function AppContent() {
     setZenithGold(false);
   }, [setZenithBlue, setZenithGold]);
 
-  // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
-  // Optimistically turns the button gold, then requests geolocation; reverts
-  // the gold state if the permission is denied.
-  const handleZenithHold = useCallback(() => {
-    setZenithGold(true);
-    geolocate({ onError: () => setZenithGold(false) });
-  }, [geolocate]);
 
-  const handleCenterMap = useCallback(() => {
-    setZenithBlue(true);
+  const handleCenterMap = useCallback((overrideCoords) => {
+    if (isGeolocatedRef.current) setZenithGold(true);
+    else setZenithBlue(true);
     const map = mapRef.current;
-    if (!map || !coords) return;
+    const c = overrideCoords ?? coords;
+    if (!map || !c) return;
     // Bounding box that contains all arcs/lines drawn at overlayRadius from coords.
     const r = overlayRadius * 1.35; // 35 % margin so edges aren't clipped
-    const latCos = Math.cos((coords.lat * Math.PI) / 180);
-    const sw = [coords.lng - r / latCos, coords.lat - r];
-    const ne = [coords.lng + r / latCos, coords.lat + r];
+    const latCos = Math.cos((c.lat * Math.PI) / 180);
+    const sw = [c.lng - r / latCos, c.lat - r];
+    const ne = [c.lng + r / latCos, c.lat + r];
     const isMobile = window.innerWidth < 768;
     // Read the full visible panel height (bar-only when peeked, full when open).
     const panelVisibleH = parseInt(
@@ -114,14 +114,24 @@ function AppContent() {
     });
   }, [coords, mapRef, overlayRadius]);
 
+    // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
+  // Optimistically turns the button gold, then requests geolocation; reverts
+  // the gold state if the permission is denied.
+  const handleZenithHold = useCallback(() => {
+    isGeolocatedRef.current = true;
+    setZenithGold(true);
+    geolocate({
+      onSuccess: (c) => handleCenterMap(c),
+      onError: () => { isGeolocatedRef.current = false; setZenithGold(false); },
+    });
+  }, [geolocate, handleCenterMap]);
+
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
-    // When a new location is chosen (search / tap), keep the title button
-    // blue so the UI indicates the view is locked to the selected point.
+    isGeolocatedRef.current = false;
     setZenithGold(false);
-    setZenithBlue(true);
-    mapRef.current?.flyTo({ center: [c.lng, c.lat], zoom: 13, duration: TRANSITIONS.flyToDuration });
-  }, [setCoords, mapRef]);
+    handleCenterMap(c);
+  }, [setCoords, handleCenterMap]);
 
   // Called when the Zenith title/button is tapped to center the map.
   const handleZenithTap = useCallback(() => {
@@ -129,7 +139,8 @@ function AppContent() {
   }, [handleCenterMap]);
 
   const handleOverlayZoomChange = useCallback((newZoom) => {
-    setZenithBlue(true);
+    if (isGeolocatedRef.current) setZenithGold(true);
+    else setZenithBlue(true);
     setOverlayZoom(newZoom);
     const map = mapRef.current;
     if (!map || !coords) return;
