@@ -3178,7 +3178,7 @@ vec4 projected_point=u_matrix*vec4(world_pos,1.0);projected_point.xy+=projected_
                           text-xs font-medium transition-all duration-200 border
                           ${O?`bg-green-500/25 border-green-500`:`bg-red-500/20 border-red-400`}
                           ${O?T?`text-green-200`:`text-green-800`:T?`text-red-200`:`text-red-800`}
-                        `,children:`Sat.`}),(0,V.jsx)(`button`,{onClick:()=>{F(!P),h(T?`dark`:`light`)},className:`flex-1 h-full flex items-center justify-center rounded-xl
+                        `,children:`Sat.`}),(0,V.jsx)(`button`,{onClick:()=>{F(!P),h(O?`satellite`:T?`dark`:`light`)},className:`flex-1 h-full flex items-center justify-center rounded-xl
                           text-xs font-medium transition-all duration-200 border
                           ${P?`bg-green-500/25 border-green-500`:`bg-red-500/20 border-red-400`}
                           ${P?T?`text-green-200`:`text-green-800`:T?`text-red-200`:`text-red-800`}
