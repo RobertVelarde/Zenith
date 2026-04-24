@@ -447,6 +447,7 @@ export default function SidePanel({
             onTouchStart={onDragStart}
             onTouchEnd={onDragEnd}
             className={`shrink-0 relative select-none md:border-b ${borderColor}`}
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="flex items-center gap-1.5 px-2 py-2">
 
@@ -683,7 +684,10 @@ export default function SidePanel({
             onTouchEnd={onScrollBodyTouchEnd}
             className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-3 space-y-4
                         touch-pan-y md:touch-auto ${isLight ? 'light-panel' : ''}`}
-            style={scrollBodyMaxH !== null ? { maxHeight: scrollBodyMaxH } : undefined}
+            style={{
+              ...(scrollBodyMaxH !== null ? { maxHeight: scrollBodyMaxH } : {}),
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            }}
           >
             <DateTimeControls
               year={year}
