@@ -21,6 +21,7 @@ import {
   sunPointGeoJSON,
   moonArcGeoJSON,
   moonPointGeoJSON,
+  headingLineGeoJSON,
 } from '../utils/geoJson';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -33,6 +34,7 @@ const SOURCES = [
   'sun-point',
   'moon-arc',
   'moon-point',
+  'heading-line',
 ];
 
 /**
@@ -56,6 +58,7 @@ export default function MapView({
   sunData,
   moonData,
   overlayRadius,
+  heading,
   onMapClick,
   mapRef,
 }) {
@@ -65,8 +68,8 @@ export default function MapView({
 
   // Ref that always holds the latest overlay data so the style.load handler
   // can push it synchronously without waiting for a React re-render.
-  const overlayDataRef = useRef({ coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius });
-  overlayDataRef.current = { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius };
+  const overlayDataRef = useRef({ coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading });
+  overlayDataRef.current = { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading };
 
   // Track which Mapbox style URL is currently applied so the switch-style
   // effect can skip the initial no-op.
@@ -146,8 +149,8 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius });
-  }, [coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, mapRef]);
+    pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading });
+  }, [coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading, mapRef]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 w-full h-full" />
@@ -172,7 +175,7 @@ function setSourceData(map, id, data) {
  * @param {mapboxgl.Map} map - The Mapbox instance.
  * @param {Object} payload   - Contains coords, sunTrajectory, moonTrajectory, sunData, moonData.
  */
-function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius = OVERLAY_RADIUS }) {
+function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius = OVERLAY_RADIUS, heading }) {
   if (!coords) return;
   const { lat, lng } = coords;
   const r = overlayRadius;
@@ -181,6 +184,7 @@ function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, 
   setSourceData(map, 'sun-point', sunData ? sunPointGeoJSON(sunData, lat, lng, r) : EMPTY_FC);
   setSourceData(map, 'moon-arc', moonTrajectory ? moonArcGeoJSON(moonTrajectory, lat, lng, r) : EMPTY_FC);
   setSourceData(map, 'moon-point', moonData ? moonPointGeoJSON(moonData, lat, lng, r) : EMPTY_FC);
+  setSourceData(map, 'heading-line', heading != null ? headingLineGeoJSON(heading, lat, lng, r) : EMPTY_FC);
 }
 
 /**
@@ -287,5 +291,16 @@ function addSourcesAndLayers(map) {
     id: 'moon-circle-below', source: 'moon-point', type: 'circle',
     filter: ['==', ['get', 'kind'], 'moon-point-below'],
     paint: { 'circle-radius': LS.moonPointBelow.radius, 'circle-color': LS.moonPointBelow.color, 'circle-stroke-width': LS.moonPointBelow.strokeWidth, 'circle-stroke-color': LS.moonPointBelow.strokeColor, 'circle-opacity': LS.moonPointBelow.opacity },
+  });
+
+  // ---- Compass heading line ----
+  addIf('heading-line', {
+    id: 'heading-line', source: 'heading-line', type: 'line',
+    filter: ['==', ['get', 'kind'], 'heading-line'],
+    paint: {
+      'line-color': '#22d3ee',
+      'line-width': 2.5,
+      'line-opacity': 0.9,
+    },
   });
 }

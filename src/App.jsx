@@ -18,6 +18,7 @@ import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useDebounce } from './hooks/useDebounce';
+import { useCompassHeading } from './hooks/useCompassHeading';
 import { API } from './config';
 
 /**
@@ -57,6 +58,8 @@ function AppContent() {
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
     coords, year, month, day, timeMinutes, timezone,
   );
+
+  const { heading } = useCompassHeading();
 
   /* ---- Handlers ---- */
   const handleMapClick = useCallback((c) => {
@@ -129,6 +132,7 @@ function AppContent() {
         sunData={sunData}
         moonData={moonData}
         overlayRadius={overlayRadius}
+        heading={heading}
         onMapClick={handleMapClick}
         mapRef={mapRef}
       />

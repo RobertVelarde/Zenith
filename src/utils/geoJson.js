@@ -174,3 +174,27 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
 
   return { type: 'FeatureCollection', features };
 }
+
+/* ---------- COMPASS HEADING LINE ---------- */
+/**
+ * Build a GeoJSON line in the direction the device's compass is pointing.
+ * The line extends from the origin in the heading direction (×1.3 radius).
+ *
+ * @param {number} heading - Compass bearing 0–360 (degrees from North).
+ * @param {number} lat
+ * @param {number} lng
+ * @param {number} r - Overlay radius in degrees.
+ */
+export function headingLineGeoJSON(heading, lat, lng, r = OVERLAY_RADIUS) {
+  const tip = project(lat, lng, heading, r * 1.3);
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { kind: 'heading-line' },
+        geometry: { type: 'LineString', coordinates: [[lng, lat], tip] },
+      },
+    ],
+  };
+}
