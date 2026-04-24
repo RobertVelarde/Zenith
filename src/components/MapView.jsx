@@ -92,6 +92,12 @@ export default function MapView({
         zoom: DEFAULT_ZOOM,
         attributionControl: false,
         zoomControl: false,
+        projection: 'mercator', // Force a flat 2D projection
+        pitchWithRotate: false,  // Disable tilting via rotation
+        dragRotate: false,       // Disable right-click/Ctrl + drag rotation
+        touchZoomRotate: false,  // Disable two-finger rotation on touch
+        maxPitch: 0,             // Prevent any pitch (tilt)
+        minPitch: 0              // Ensure the map stays strictly flat
       });
     } catch {
       notify(LABELS.mapLoadFailed, 'error');
