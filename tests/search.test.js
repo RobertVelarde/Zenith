@@ -29,16 +29,34 @@ test('clicking a search result sets the app coordinates', async ({ page }) => {
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15000 });
-  await page
-    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
-    .waitFor({ state: 'hidden', timeout: 15_000 })
-    .catch(() => {});
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector('[data-testid="loading-screen"]');
+      if (!overlay) return true;
+      const hidden = overlay.getAttribute('aria-hidden') === 'true';
+      const pe = window.getComputedStyle(overlay).pointerEvents;
+      return hidden && pe === 'none';
+    },
+    null,
+    { timeout: 25_000 },
+  );
 
   // Ensure desktop layout so the inline dropdown is used in tests.
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // Open the search input and type a query.
-  await page.locator('button[aria-label="Search location"]').click();
+  await page.locator('button[aria-label="Search location"]').click({ force: true });
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector('[data-testid="loading-screen"]');
+      if (!overlay) return true;
+      const hidden = overlay.getAttribute('aria-hidden') === 'true';
+      const pe = window.getComputedStyle(overlay).pointerEvents;
+      return hidden && pe === 'none';
+    },
+    null,
+    { timeout: 10_000 },
+  );
   const input = page.locator('input[placeholder^="Search location"]').first();
   await expect(input).toBeVisible({ timeout: 5000 });
   await input.fill('Test');

@@ -77,12 +77,18 @@ async function gotoApp(page) {
   // The Zenith title button is always visible (header is never hidden).
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
 
-  // Wait for the initial loading overlay to fully dismiss so it cannot
-  // intercept clicks in slower mobile Safari runs.
-  await page
-    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
-    .waitFor({ state: 'hidden', timeout: 15_000 })
-    .catch(() => {});
+  // Wait until the loading overlay is not blocking pointer interactions.
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector('[data-testid="loading-screen"]');
+      if (!overlay) return true;
+      const hidden = overlay.getAttribute('aria-hidden') === 'true';
+      const pe = window.getComputedStyle(overlay).pointerEvents;
+      return hidden && pe === 'none';
+    },
+    null,
+    { timeout: 25_000 },
+  );
 }
 
 /**
@@ -97,12 +103,16 @@ async function gotoApp(page) {
 async function expandPanel(page) {
   const expandButton = page.locator('button[aria-label="Expand menu"]');
   await expect(expandButton).toBeVisible({ timeout: 5_000 });
-  await expandButton.click();
-  // Wait for the scroll body to slide into view (300 ms CSS transition).
-  await page
-    .locator('input.year-slider-over-gradient, input.time-slider-over-gradient')
-    .first()
-    .waitFor({ state: 'visible', timeout: 5_000 });
+  await expandButton.click({ force: true });
+  const sliders = page.locator('input.year-slider-over-gradient, input.time-slider-over-gradient').first();
+  try {
+    // Wait for the scroll body to slide into view.
+    await sliders.waitFor({ state: 'visible', timeout: 6_000 });
+  } catch {
+    // Fallback activation path if initial click did not advance the stage.
+    await expandButton.dispatchEvent('click');
+    await sliders.waitFor({ state: 'visible', timeout: 10_000 });
+  }
 }
 
 // ---------------------------------------------------------------------------

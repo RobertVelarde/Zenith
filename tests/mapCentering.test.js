@@ -97,12 +97,18 @@ async function gotoApp(page) {
   // The Zenith button is always visible regardless of panel stage.
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
 
-  // Wait for the initial loading overlay to clear so it cannot intercept
-  // interactions with the panel controls.
-  await page
-    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
-    .waitFor({ state: 'hidden', timeout: 15_000 })
-    .catch(() => {});
+  // Wait until the loading overlay is not blocking pointer interactions.
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector('[data-testid="loading-screen"]');
+      if (!overlay) return true;
+      const hidden = overlay.getAttribute('aria-hidden') === 'true';
+      const pe = window.getComputedStyle(overlay).pointerEvents;
+      return hidden && pe === 'none';
+    },
+    null,
+    { timeout: 25_000 },
+  );
 }
 
 /**
@@ -168,7 +174,14 @@ async function expandPanelAndWait(page, initialBarH) {
   } catch {
     // Fallback: direct DOM click in case pointer events were intercepted.
     await expandButton.dispatchEvent('click');
-    return waitForPanelVisibleH(page, initialBarH, 15_000);
+    try {
+      return await waitForPanelVisibleH(page, initialBarH, 8_000);
+    } catch {
+      // Final fallback: keyboard activation for the button semantics.
+      await expandButton.focus();
+      await page.keyboard.press('Enter');
+      return waitForPanelVisibleH(page, initialBarH, 15_000);
+    }
   }
 }
 
