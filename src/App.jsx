@@ -183,7 +183,7 @@ function AppContent() {
     map.fitBounds([sw, ne], {
       padding: isMobile
         ? { top: 24, right: 24, bottom: panelVisibleH + 24, left: 24 }
-        : { top: 24, right: 24, bottom: 24, left: 360 + 24 },
+        : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
       duration: TRANSITIONS.flyToDuration,
     });
   }, [coords, mapRef]);

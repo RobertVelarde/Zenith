@@ -638,10 +638,16 @@ export default function SidePanel({
             onTouchEnd={onDragEnd}
             className="shrink-0 relative select-none"
           >
-            {/* Grab handle pill — mobile only, centered at very top */}
-            <div className="md:hidden flex justify-center pt-2 pb-0.5">
+            {/* Grab handle pill — mobile only, centered at very top.
+                 Rendered as a button so assistive technology and tests can
+                 advance the panel stage without requiring a drag gesture. */}
+            <button
+              aria-label="Expand menu"
+              onClick={() => setStage((s) => Math.min(3, s + 1))}
+              className="md:hidden w-full flex justify-center pt-2 pb-0.5 focus:outline-none"
+            >
               <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-white/25' : 'bg-slate-400/40'}`} />
-            </div>
+            </button>
 
             <div className="flex items-center gap-1.5 px-2 py-2">
 

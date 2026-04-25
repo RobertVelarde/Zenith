@@ -37,7 +37,7 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 /** Width (px) of the left-docked panel on desktop/tablet. */
-const DESKTOP_PANEL_W = 360;
+const DESKTOP_PANEL_W = 340;
 
 /** Edge margin applied to all four sides of the fitBounds padding. */
 const MARGIN = 24;
@@ -82,8 +82,11 @@ function remainingCenter(vpWidth, vpHeight, padding) {
 }
 
 /**
- * Navigate to the app and wait for the panel controls to mount.
+ * Navigate to the app and wait for the panel header to mount.
  * Map-related console errors are suppressed (no real Mapbox token in tests).
+ *
+ * The Zenith title button lives in the always-visible header, making it a
+ * reliable sentinel for all viewports and mobile bottom-sheet stages.
  */
 async function gotoApp(page) {
   page.on('console', () => {});
@@ -91,11 +94,8 @@ async function gotoApp(page) {
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  // Presence of either slider confirms the controls panel has fully mounted.
-  await page.waitForSelector(
-    'input.year-slider-over-gradient, input.time-slider-over-gradient',
-    { timeout: 15_000 },
-  );
+  // The Zenith button is always visible regardless of panel stage.
+  await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
 }
 
 /**

@@ -59,9 +59,13 @@ function centerY(box) {
 }
 
 /**
- * Navigate to the app and wait until the controls panel (containing the
- * sliders) is present in the DOM. Mapbox map errors are expected in test
- * environments using a placeholder token and are silently ignored.
+ * Navigate to the app and wait until the panel header has mounted.
+ * Mapbox map errors are expected in test environments using a placeholder
+ * token and are silently ignored.
+ *
+ * The Zenith title button lives in the header which is always visible
+ * regardless of the mobile bottom-sheet stage, making it a reliable sentinel
+ * for both desktop and mobile viewports.
  */
 async function gotoApp(page) {
   // Suppress console errors from the Mapbox SDK when a real token is absent.
@@ -70,12 +74,26 @@ async function gotoApp(page) {
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  // Wait for either slider to appear — presence confirms the controls panel
-  // has mounted. Use a generous timeout for slower CI environments.
-  await page.waitForSelector(
-    'input.year-slider-over-gradient, input.time-slider-over-gradient',
-    { timeout: 15_000 },
-  );
+  // The Zenith title button is always visible (header is never hidden).
+  await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
+}
+
+/**
+ * Advance the mobile bottom-sheet from stage 1 (peeked) to stage 2 (open)
+ * by clicking the accessible grab-handle button, then wait until the
+ * year/time sliders become visible in the newly-revealed scroll body.
+ *
+ * Only needed for mobile-sized viewports where the sliders start hidden.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function expandPanel(page) {
+  await page.locator('button[aria-label="Expand menu"]').click();
+  // Wait for the scroll body to slide into view (300 ms CSS transition).
+  await page
+    .locator('input.year-slider-over-gradient, input.time-slider-over-gradient')
+    .first()
+    .waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +206,10 @@ test.describe('Slider bounding-box alignment', () => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         await gotoApp(page);
 
+        // On mobile, sliders are in the hidden scroll body at stage 1.
+        // Expand the panel so they become visible before measuring.
+        if (vp.width < 768) await expandPanel(page);
+
         const inputSelector = `.${slider}-slider-over-gradient`;
 
         /**
@@ -257,6 +279,9 @@ test.describe('Screenshot regression', () => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await gotoApp(page);
 
+      // On mobile the sliders are in the scroll body hidden at stage 1 — expand first.
+      if (vp.width < 768) await expandPanel(page);
+
       // Try to capture just the slider area; fall back to full page.
       const yearSlider = page.locator('.year-slider-over-gradient').first();
       const container  = yearSlider.locator('xpath=ancestor::div[contains(@class,"space-y")]').first();
@@ -294,6 +319,9 @@ test.describe('Mobile touch: slider thumb hit-target', () => {
     test(`${slider} slider input height equals touch-padded thumb size`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await gotoApp(page);
+
+      // Sliders are in the hidden scroll body at the default mobile stage 1.
+      await expandPanel(page);
 
       const { inputHeight, expectedHeight } = await page.evaluate((sel) => {
         const input = document.querySelector(sel);
