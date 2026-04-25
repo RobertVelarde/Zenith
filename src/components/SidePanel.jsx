@@ -1,26 +1,19 @@
 ﻿import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useBottomSheet } from '../hooks/useBottomSheet';
 import { LAYOUT } from '../config';
+import { useTheme } from '../hooks/useTheme';
 import PanelHeader from './PanelHeader';
 import PinnedSection from './PinnedSection';
 import PanelScrollBody from './PanelScrollBody';
 
 export default function SidePanel({
-  coords, year, month, day, timeMinutes, timezone, elevation,
-  sunData, moonData, mapStyle, isOpen,
-  onCoordsChange, onDateChange, onTimeChange, onStyleChange, onCenterMap,
+  coords, year, month, day, timeMinutes, elevation,
+  sunData, moonData, isOpen,
+  onCoordsChange, onDateChange, onTimeChange, onCenterMap,
   overlayZoom, onOverlayZoomChange, onZenithHold, zenithGold, onZenithTap,
-  zenithBlue, use24h, onUse24hChange,
+  zenithBlue,
 }) {
-  const [isDark,      setIsDark]      = useState(mapStyle !== 'light');
-  const [isSatellite, setIsSatellite] = useState(mapStyle === 'satellite');
-  useEffect(() => {
-    if (mapStyle === 'satellite') { setIsSatellite(true); }
-    else { setIsSatellite(false); setIsDark(mapStyle !== 'light'); }
-  }, [mapStyle]);
-  const isLight = !isDark, glassClass = isLight ? 'glass-light' : 'glass';
-  const textPrimary = isLight ? 'text-slate-900' : 'text-white';
-  const borderColor = isLight ? 'border-slate-200' : 'border-white/5';
+  const { glassClass, borderColor } = useTheme();
   const [vp, setVp] = useState({ vw: window.innerWidth, vh: window.innerHeight });
   useEffect(() => {
     const u = () => setVp({ vw: window.innerWidth, vh: window.innerHeight });
@@ -66,7 +59,6 @@ export default function SidePanel({
     () => (!isMobile || stage !== 2) ? null : Math.max(0, vp.vh - vp.vw - headerHeight),
     [isMobile, stage, vp, headerHeight],
   );
-  useEffect(() => { document.documentElement.dataset.uiTheme = isLight ? 'light' : 'dark'; }, [isLight]);
   const onCenterMapRef = useRef(onCenterMap);
   useEffect(() => { onCenterMapRef.current = onCenterMap; }, [onCenterMap]);
   const isFirstStageEffect = useRef(true);
@@ -103,11 +95,8 @@ export default function SidePanel({
       <div className={`side-panel-inner h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
         <PanelHeader
           ref={headerRef} stage={stage} setStage={setStage}
-          isDark={isDark} isSatellite={isSatellite} setIsDark={setIsDark} setIsSatellite={setIsSatellite}
-          isLight={isLight} glassClass={glassClass} textPrimary={textPrimary}
           zenithGold={zenithGold} zenithBlue={zenithBlue} onZenithTap={onZenithTap} onZenithHold={onZenithHold}
-          coords={coords} onCoordsChange={onCoordsChange} onStyleChange={onStyleChange}
-          use24h={use24h} onUse24hChange={onUse24hChange}
+          coords={coords} onCoordsChange={onCoordsChange}
           onDragStart={onDragStart} onDragEnd={onDragEnd} resultsBottomPx={resultsBottomPx}
         />
         <div
@@ -115,18 +104,17 @@ export default function SidePanel({
           className={`shrink-0 px-4 border-t border-b ${borderColor}`}
           style={{ display: (isMobile && stage === 1) ? undefined : 'none', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
         >
-          <PinnedSection {...{ sunData, moonData, year, month, day, timezone, use24h,
-            overlayZoom, onOverlayZoomChange, onDateChange, isLight, borderColor,
+          <PinnedSection {...{ sunData, moonData, year, month, day,
+            overlayZoom, onOverlayZoomChange, onDateChange,
             onScrollToSolar, onScrollToLunar }} />
         </div>
         <PanelScrollBody
           scrollBodyRef={scrollBodyRef} onTouchStart={onScrollBodyTouchStart} onTouchEnd={onScrollBodyTouchEnd}
           scrollBodyMaxH={scrollBodyMaxH} isMobile={isMobile} stage={stage}
-          isLight={isLight} borderColor={borderColor}
           solarSectionRef={solarSectionRef} lunarSectionRef={lunarSectionRef}
-          {...{ sunData, moonData, year, month, day, timezone, use24h, elevation,
+          {...{ sunData, moonData, year, month, day, elevation,
             overlayZoom, onOverlayZoomChange, onDateChange, onTimeChange,
-            timeMinutes, coords, onUse24hChange, onScrollToSolar, onScrollToLunar }}
+            timeMinutes, coords, onScrollToSolar, onScrollToLunar }}
         />
       </div>
     </div>

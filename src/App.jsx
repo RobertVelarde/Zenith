@@ -13,6 +13,8 @@ import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
 import { NotificationProvider } from './hooks/useNotification';
+import { ThemeProvider } from './hooks/useTheme';
+import { TimeFormatProvider } from './hooks/useTimeFormat';
 import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from './config';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
@@ -195,51 +197,49 @@ function AppContent() {
   }, [setYear, setMonth, setDay]);
 
   return (
-    <div className="app-root relative w-screen overflow-hidden">
-      <MapView
-        coords={coords}
-        mapStyle={mapStyle}
-        sunTrajectory={sunTrajectory}
-        moonTrajectory={moonTrajectory}
-        sunData={sunData}
-        moonData={moonData}
-        overlayRadius={overlayRadius}
-        heading={heading}
-        onMapClick={handleMapClick}
-        mapRef={mapRef}
-        onUserInteraction={handleUserInteraction}
-      />
+    <ThemeProvider mapStyle={mapStyle} onStyleChange={setMapStyle}>
+      <TimeFormatProvider timezone={timezone} use24h={use24h} setUse24h={setUse24h}>
+        <div className="app-root relative w-screen overflow-hidden">
+          <MapView
+            coords={coords}
+            mapStyle={mapStyle}
+            sunTrajectory={sunTrajectory}
+            moonTrajectory={moonTrajectory}
+            sunData={sunData}
+            moonData={moonData}
+            overlayRadius={overlayRadius}
+            heading={heading}
+            onMapClick={handleMapClick}
+            mapRef={mapRef}
+            onUserInteraction={handleUserInteraction}
+          />
 
-      <SidePanel
-        coords={coords}
-        year={year}
-        month={month}
-        day={day}
-        timeMinutes={timeMinutes}
-        timezone={timezone}
-        elevation={elevation}
-        sunData={sunData}
-        moonData={moonData}
-        mapStyle={mapStyle}
-        isOpen={panelOpen}
-        onToggle={() => setPanelOpen((v) => !v)}
-        onCoordsChange={handleCoordsChange}
-        onDateChange={handleDateChange}
-        onTimeChange={setTimeMinutes}
-        onStyleChange={setMapStyle}
-        onCenterMap={handleCenterMap}
-        overlayZoom={overlayZoom}
-        onOverlayZoomChange={handleOverlayZoomChange}
-        onZenithHold={handleZenithHold}
-        zenithGold={zenithGold}
-        onZenithTap={handleZenithTap}
-        zenithBlue={zenithBlue}
-        use24h={use24h}
-        onUse24hChange={setUse24h}
-      />
+          <SidePanel
+            coords={coords}
+            year={year}
+            month={month}
+            day={day}
+            timeMinutes={timeMinutes}
+            elevation={elevation}
+            sunData={sunData}
+            moonData={moonData}
+            isOpen={panelOpen}
+            onCoordsChange={handleCoordsChange}
+            onDateChange={handleDateChange}
+            onTimeChange={setTimeMinutes}
+            onCenterMap={handleCenterMap}
+            overlayZoom={overlayZoom}
+            onOverlayZoomChange={handleOverlayZoomChange}
+            onZenithHold={handleZenithHold}
+            zenithGold={zenithGold}
+            onZenithTap={handleZenithTap}
+            zenithBlue={zenithBlue}
+          />
 
-      <NotificationToast />
-    </div>
+          <NotificationToast />
+        </div>
+      </TimeFormatProvider>
+    </ThemeProvider>
   );
 }
 

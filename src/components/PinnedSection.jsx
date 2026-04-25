@@ -14,7 +14,8 @@
 
 import MoonPhaseIcon from './MoonPhaseIcon';
 import { OVERLAY_ZOOM, DEFAULT_ZOOM } from '../config';
-import { formatTime } from '../utils/timezone';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 export default function PinnedSection({
   sunData,
@@ -22,17 +23,14 @@ export default function PinnedSection({
   year,
   month,
   day,
-  timezone,
-  use24h,
   overlayZoom,
   onOverlayZoomChange,
   onDateChange,
-  isLight,
-  borderColor,
   onScrollToSolar,
   onScrollToLunar,
 }) {
-  const fmt = (d) => timezone && d ? formatTime(d, timezone, use24h) : '--';
+  const { isLight, borderColor } = useTheme();
+  const { fmt } = useTimeFormat();
   function pad(n) { return String(n).padStart(2, '0'); }
 
   return (

@@ -12,6 +12,8 @@ import { useMemo } from 'react';
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
 import { LABELS, TWILIGHT_COLORS, YEARLY_GRADIENT_PALETTE, SLIDER } from '../config';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function mToHHMM(m) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; }
@@ -166,12 +168,11 @@ function buildDayNightGradient(sunTimes, timezone) {
 export default function DateTimeControls({
   year, month, day, timeMinutes,
   sunTimes,
-  timezone,
   onDateChange, onTimeChange,
-  use24h,
   coords,
-  isLight,
 }) {
+  const { isLight } = useTheme();
+  const { timezone, use24h } = useTimeFormat();
   const dateStr = `${year}-${pad(month)}-${pad(day)}`;
   const doy = useMemo(() => dateToDoy(new Date(year, month - 1, day)), [year, month, day]);
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;

@@ -6,9 +6,11 @@
  */
 
 import { useState } from 'react';
-import { formatTime, formatDuration } from '../utils/timezone';
+import { formatDuration } from '../utils/timezone';
 import { LABELS } from '../config';
 import DataRow from './DataRow';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 /**
  * @param {Object} props
@@ -19,13 +21,14 @@ import DataRow from './DataRow';
  * @param {boolean}  props.use24h     - 24-hour format flag.
  * @param {Function} props.onToggle24h - Toggle between 12/24h.
  */
-export default function AdvancedPanel({ sunData, timezone, elevation, isLight, use24h, onToggle24h }) {
+export default function AdvancedPanel({ sunData, elevation }) {
   const [open, setOpen] = useState(false);
+  const { isLight } = useTheme();
+  const { fmt, timezone } = useTimeFormat();
 
   if (!sunData || !timezone) return null;
 
   const t = sunData.times;
-  const fmt = (d) => formatTime(d, timezone, use24h);
   const dayLen =
     t.sunset && t.sunrise && !isNaN(t.sunset.getTime()) && !isNaN(t.sunrise.getTime())
       ? t.sunset - t.sunrise

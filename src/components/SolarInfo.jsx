@@ -4,9 +4,11 @@
  * @module components/SolarInfo
  */
 
-import { formatTime, formatDuration } from '../utils/timezone';
+import { formatDuration } from '../utils/timezone';
 import { LABELS } from '../config';
 import DataRow from './DataRow';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 /**
  * Render a summary of solar events (sunrise, sunset, golden hours, etc.)
@@ -18,16 +20,16 @@ import DataRow from './DataRow';
  * @param {boolean} props.isLight  - Light-theme flag.
  * @param {boolean} props.use24h   - 24-hour time format flag.
  */
-export default function SolarInfo({ sunData, timezone, isLight, use24h }) {
-  if (!sunData || !timezone) {
+export default function SolarInfo({ sunData }) {
+  const { isLight } = useTheme();
+  const { fmt } = useTimeFormat();
+  if (!sunData) {
     return <div className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{LABELS.noData}</div>;
   }
 
   const t = sunData.times;
   const p = sunData.position;
   const az = sunData.eventAzimuths;
-  const fmt = (d) => formatTime(d, timezone, use24h);
-
   const dayLength =
     t.sunset && t.sunrise && !isNaN(t.sunset.getTime()) && !isNaN(t.sunrise.getTime())
       ? t.sunset - t.sunrise

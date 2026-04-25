@@ -18,19 +18,13 @@ import { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { LABELS, MAPBOX_TOKEN, API, ZENITH } from '../config';
 import { useNotification } from '../hooks/notificationContext';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 export default forwardRef(function PanelHeader({
   // Stage control (grab handle)
   stage,
   setStage,
-  // Theme
-  isDark,
-  isSatellite,
-  setIsDark,
-  setIsSatellite,
-  isLight,
-  glassClass,
-  textPrimary,
   // Zenith button
   zenithGold,
   zenithBlue,
@@ -39,10 +33,6 @@ export default forwardRef(function PanelHeader({
   // Coordinates + geocoding
   coords,
   onCoordsChange,
-  // Style / format
-  onStyleChange,
-  use24h,
-  onUse24hChange,
   // Gesture handlers (forwarded from useBottomSheet via SidePanel)
   onDragStart,
   onDragEnd,
@@ -50,6 +40,8 @@ export default forwardRef(function PanelHeader({
   resultsBottomPx,
 }, ref) {
   const { notify } = useNotification();
+  const { isDark, isSatellite, setIsDark, setIsSatellite, isLight, glassClass, textPrimary } = useTheme();
+  const { use24h, setUse24h } = useTimeFormat();
 
   // ── Tap-flash state ────────────────────────────────────────────────────────
   const [titleFlash,  setTitleFlash]  = useState(false);
@@ -235,11 +227,7 @@ export default forwardRef(function PanelHeader({
                 /* Settings mode: Dark / Satellite / 24hr toggles */
                 <div className="flex h-full gap-1.5">
                   <button
-                    onClick={() => {
-                      const next = !isDark;
-                      setIsDark(next);
-                      if (!isSatellite) onStyleChange(next ? 'dark' : 'light');
-                    }}
+                    onClick={() => setIsDark(!isDark)}
                     className={`flex-1 h-full flex items-center justify-center rounded-xl
                       text-xs font-medium transition-all duration-200 border
                       ${isDark
@@ -250,11 +238,7 @@ export default forwardRef(function PanelHeader({
                     Dark
                   </button>
                   <button
-                    onClick={() => {
-                      const next = !isSatellite;
-                      setIsSatellite(next);
-                      onStyleChange(next ? 'satellite' : isDark ? 'dark' : 'light');
-                    }}
+                    onClick={() => setIsSatellite(!isSatellite)}
                     className={`flex-1 h-full flex items-center justify-center rounded-xl
                       text-xs font-medium transition-all duration-200 border
                       ${isSatellite
@@ -268,11 +252,7 @@ export default forwardRef(function PanelHeader({
                     Sat.
                   </button>
                   <button
-                    onClick={() => {
-                      const next = !use24h;
-                      onUse24hChange(next);
-                      onStyleChange(isSatellite ? 'satellite' : isDark ? 'dark' : 'light');
-                    }}
+                    onClick={() => setUse24h(!use24h)}
                     className={`flex-1 h-full flex items-center justify-center rounded-xl
                       text-xs font-medium transition-all duration-200 border
                       ${use24h

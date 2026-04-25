@@ -13,7 +13,10 @@
  * @param {string}  [props.color] - Tailwind text-color class for the value (dark mode).
  * @param {boolean} [props.isLight] - Whether the light theme is active.
  */
-export default function DataRow({ label, value, color = 'text-gray-200', isLight }) {
+import { useTheme } from '../hooks/useTheme';
+
+export default function DataRow({ label, value, color = 'text-gray-200' }) {
+  const { isLight } = useTheme();
   return (
     <div className="flex justify-between items-center py-0.5">
       <span className={`text-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{label}</span>

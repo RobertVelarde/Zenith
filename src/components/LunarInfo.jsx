@@ -9,6 +9,8 @@ import { getMoonPhaseName } from '../utils/sunMoonCalc';
 import { LABELS } from '../config';
 import DataRow from './DataRow';
 import MoonPhaseIcon from './MoonPhaseIcon';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 /**
  * Render lunar data for the current date/location.
@@ -19,7 +21,9 @@ import MoonPhaseIcon from './MoonPhaseIcon';
  * @param {boolean} props.isLight  - Light-theme flag.
  * @param {boolean} props.use24h   - 24-hour time format flag.
  */
-export default function LunarInfo({ moonData, timezone, isLight, use24h }) {
+export default function LunarInfo({ moonData }) {
+  const { isLight } = useTheme();
+  const { use24h, timezone } = useTimeFormat();
   if (!moonData || !timezone) return null;
 
   const t = moonData.times;

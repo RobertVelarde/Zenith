@@ -22,6 +22,8 @@ import SolarInfo from './SolarInfo';
 import LunarInfo from './LunarInfo';
 import AdvancedPanel from './AdvancedPanel';
 import { LABELS } from '../config';
+import { useTheme } from '../hooks/useTheme';
+import { useTimeFormat } from '../hooks/useTimeFormat';
 
 export default function PanelScrollBody({
   // Ref + gesture handlers (from useBottomSheet via SidePanel)
@@ -33,9 +35,6 @@ export default function PanelScrollBody({
   // Visibility control
   isMobile,
   stage,
-  // Theme
-  isLight,
-  borderColor,
   // Section refs for scroll-to navigation
   solarSectionRef,
   lunarSectionRef,
@@ -45,8 +44,6 @@ export default function PanelScrollBody({
   year,
   month,
   day,
-  timezone,
-  use24h,
   overlayZoom,
   onOverlayZoomChange,
   onDateChange,
@@ -58,8 +55,9 @@ export default function PanelScrollBody({
   coords,
   // AdvancedPanel props
   elevation,
-  onUse24hChange,
 }) {
+  const { isLight, borderColor } = useTheme();
+  const { timezone, use24h, setUse24h } = useTimeFormat();
   return (
     <div
       ref={scrollBodyRef}
@@ -83,13 +81,9 @@ export default function PanelScrollBody({
           year={year}
           month={month}
           day={day}
-          timezone={timezone}
-          use24h={use24h}
           overlayZoom={overlayZoom}
           onOverlayZoomChange={onOverlayZoomChange}
           onDateChange={onDateChange}
-          isLight={isLight}
-          borderColor={borderColor}
           onScrollToSolar={onScrollToSolar}
           onScrollToLunar={onScrollToLunar}
         />
@@ -101,30 +95,23 @@ export default function PanelScrollBody({
         day={day}
         timeMinutes={timeMinutes}
         sunTimes={sunData?.times}
-        timezone={timezone}
         onDateChange={onDateChange}
         onTimeChange={onTimeChange}
-        use24h={use24h}
         coords={coords}
-        isLight={isLight}
       />
 
       <div ref={solarSectionRef} className={`border-t ${borderColor} pt-3`}>
-        <SolarInfo sunData={sunData} timezone={timezone} isLight={isLight} use24h={use24h} />
+        <SolarInfo sunData={sunData} />
       </div>
 
       <div ref={lunarSectionRef} className={`border-t ${borderColor} pt-3`}>
-        <LunarInfo moonData={moonData} timezone={timezone} isLight={isLight} use24h={use24h} />
+        <LunarInfo moonData={moonData} />
       </div>
 
       <div className={`border-t ${borderColor} pt-3`}>
         <AdvancedPanel
           sunData={sunData}
-          timezone={timezone}
           elevation={elevation}
-          isLight={isLight}
-          use24h={use24h}
-          onToggle24h={() => onUse24hChange(!use24h)}
         />
       </div>
 

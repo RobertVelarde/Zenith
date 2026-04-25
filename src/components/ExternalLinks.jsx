@@ -6,8 +6,10 @@
 
 import { useState } from 'react';
 import { LABELS } from '../config';
+import { useTheme } from '../hooks/useTheme';
 
-export default function ExternalLinks({ coords, isLight }) {
+export default function ExternalLinks({ coords }) {
+  const { isLight } = useTheme();
   const [copied, setCopied] = useState(false);
   const { lat, lng } = coords;
 
