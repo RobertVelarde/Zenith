@@ -16,10 +16,11 @@
 
 import { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { LABELS, MAPBOX_TOKEN, API, ZENITH } from '../config';
+import { LABELS, API, ZENITH } from '../config';
 import { useNotification } from '../hooks/notificationContext';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import useGeoSearch from '../hooks/useGeoSearch';
 
 export default forwardRef(function PanelHeader({
   // Stage control (grab handle)
@@ -81,12 +82,16 @@ export default forwardRef(function PanelHeader({
   const [searchActive,   setSearchActive]   = useState(false);
   const [settingsActive, setSettingsActive] = useState(false);
 
-  // ── Mobile inline-search state ─────────────────────────────────────────────
-  const [mobileQuery,       setMobileQuery]       = useState('');
-  const [mobileResults,     setMobileResults]     = useState([]);
-  const [mobileResultsOpen, setMobileResultsOpen] = useState(false);
+  // ── Mobile inline-search state (delegated to hook) ------------------------
   const mobileSearchInput = useRef(null);
-  const mobileSearchTimer = useRef(null);
+  const {
+    query: mobileQuery,
+    setQuery: setMobileQuery,
+    results: mobileResults,
+    isOpen: mobileResultsOpen,
+    setIsOpen: setMobileResultsOpen,
+    pickResult,
+  } = useGeoSearch({ debounceMs: API.searchDebounce });
 
   // Auto-focus when search opens; clear when it closes.
   useEffect(() => {
@@ -95,7 +100,6 @@ export default forwardRef(function PanelHeader({
       return () => clearTimeout(id);
     } else {
       setMobileQuery('');
-      setMobileResults([]);
       setMobileResultsOpen(false);
     }
   }, [searchActive]);
@@ -109,32 +113,11 @@ export default forwardRef(function PanelHeader({
     setSearchActive(false);
   };
 
-  // Geocode query and show results above the header bar.
-  const mobileSearch = (q) => {
-    if (q.length < 2) { setMobileResults([]); setMobileResultsOpen(false); return; }
-    clearTimeout(mobileSearchTimer.current);
-    mobileSearchTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `${API.geocodingUrl}/${encodeURIComponent(q)}.json?access_token=${MAPBOX_TOKEN}&limit=${API.geocodingLimit}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setMobileResults(data.features || []);
-          setMobileResultsOpen(true);
-        } else {
-          notify(LABELS.geocodingFailed, 'warn');
-        }
-      } catch {
-        notify(LABELS.geocodingFailed, 'warn');
-      }
-    }, API.searchDebounce);
-  };
-
   const mobilePick = (feat) => {
-    const [lng, lat] = feat.center;
-    onCoordsChange({ lat, lng });
+    const p = pickResult(feat);
+    if (p) onCoordsChange(p);
     setSearchActive(false);
+    setMobileResultsOpen(false);
   };
 
   // ── Icon button class helper ───────────────────────────────────────────────

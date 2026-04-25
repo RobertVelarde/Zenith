@@ -7,17 +7,13 @@
  * @module components/SearchBar
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { MAPBOX_TOKEN, API, LABELS } from '../config';
-import { useNotification } from '../hooks/notificationContext';
+import { useRef, useEffect } from 'react';
+import { API, LABELS } from '../config';
+import useGeoSearch from '../hooks/useGeoSearch';
 
 export default function SearchBar({ onSelect, isLight }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
-  const timer = useRef(null);
   const wrapRef = useRef(null);
-  const { notify } = useNotification();
+  const { query, setQuery, results, isOpen, setIsOpen, pickResult } = useGeoSearch({ debounceMs: API.searchDebounce });
 
   // close dropdown on outside click
   useEffect(() => {
@@ -28,33 +24,11 @@ export default function SearchBar({ onSelect, isLight }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const search = (q) => {
-    if (q.length < 2) { setResults([]); return; }
-    clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      try {
-        const encoded = encodeURIComponent(q);
-        const res = await fetch(
-          `${API.geocodingUrl}/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=${API.geocodingLimit}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.features || []);
-          setOpen(true);
-        } else {
-          notify(LABELS.geocodingFailed, 'warn');
-        }
-      } catch {
-        notify(LABELS.geocodingFailed, 'warn');
-      }
-    }, API.searchDebounce);
-  };
-
   const pick = (feat) => {
-    const [lng, lat] = feat.center;
-    onSelect({ lat, lng }, feat.place_name);
+    const p = pickResult(feat);
+    if (p) onSelect(p, feat.place_name);
     setQuery(feat.place_name);
-    setOpen(false);
+    setIsOpen(false);
   };
 
   return (
@@ -66,8 +40,8 @@ export default function SearchBar({ onSelect, isLight }) {
         <input
           type="text"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
-          onFocus={() => results.length && setOpen(true)}
+          onChange={(e) => { setQuery(e.target.value); }}
+          onFocus={() => results.length && setIsOpen(true)}
           placeholder={LABELS.searchPlaceholder}
           className={`bg-transparent text-xs outline-none w-full ${isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-gray-500'}`}
         />
@@ -78,7 +52,7 @@ export default function SearchBar({ onSelect, isLight }) {
         )}
       </div>
 
-      {open && results.length > 0 && (
+      {isOpen && results.length > 0 && (
         <ul className={`absolute z-50 mt-1 w-full ${isLight ? 'glass-light' : 'glass'} rounded-xl overflow-hidden text-sm max-h-60 overflow-y-auto`}>
           {results.map((f) => (
             <li
