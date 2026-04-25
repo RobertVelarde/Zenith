@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file Collapsible side panel containing all controls and data displays.
  *
  * On desktop it renders as a left-docked panel; on mobile it becomes a
@@ -25,6 +25,7 @@
  */
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { useBottomSheet } from '../hooks/useBottomSheet';
 import DateTimeControls from './DateTimeControls';
 import SolarInfo from './SolarInfo';
 import LunarInfo from './LunarInfo';
@@ -230,20 +231,7 @@ export default function SidePanel({
     return () => ro.disconnect();
   }, []);
 
-  // ── 4-stage bottom sheet ───────────────────────────────────────────────────
-  // 0 = closed   — only header bar visible
-  // 1 = peeked   — header + pinned sun/moon summary
-  // 2 = open     — header + scroll body (map stays ≥ 1:1 square)
-  // 3 = full     — panel covers entire screen
-  //
-  // Panel is always 100dvh on mobile; translateY controls what is visible:
-  //   stage 0 → vh − headerH
-  //   stage 1 → vh − headerH − pinnedH
-  //   stage 2 → vw            (vh−vw visible = square map above)
-  //   stage 3 → 0             (full screen)
-  const [stage, setStage] = useState(() => window.innerWidth < 768 ? 1 : 0);
-
-  // Snap translateY values for each stage.
+  // Snap translateY values for each stage — computed here, passed to useBottomSheet.
   const snapPositions = useMemo(() => {
     const effPinnedH = pinnedHeight || lastPinnedHeightRef.current;
     return [
@@ -254,13 +242,21 @@ export default function SidePanel({
     ];
   }, [vp, headerHeight, pinnedHeight]);
 
-  const snappedTranslateY = isMobile ? (snapPositions[stage] ?? 0) : 0;
-
-  // Stable refs so native pinned-section touch handlers always see fresh values.
-  const snapPositionsRef = useRef(snapPositions);
-  useEffect(() => { snapPositionsRef.current = snapPositions; }, [snapPositions]);
-  const snappedTYRef = useRef(snappedTranslateY);
-  useEffect(() => { snappedTYRef.current = snappedTranslateY; }, [snappedTranslateY]);
+  // ── 4-stage bottom-sheet gesture system ────────────────────────────────────
+  // stage 0 = closed, 1 = peeked, 2 = open, 3 = full
+  // All gesture state, snap logic, and touch handlers live in useBottomSheet.
+  const {
+    stage,
+    setStage,
+    panelStyle,
+    currentTranslateY,
+    handlers: {
+      onDragStart,
+      onDragEnd,
+      onScrollBodyTouchStart,
+      onScrollBodyTouchEnd,
+    },
+  } = useBottomSheet({ snapPositions, isMobile, pinnedRef, headerRef, scrollBodyRef });
 
   // Peek bar height — header + pinned (used for toast positioning).
   const peekBarH = headerHeight + (pinnedHeight || lastPinnedHeightRef.current);
@@ -316,168 +312,12 @@ export default function SidePanel({
     return () => clearTimeout(id);
   }, [peekBarH, isMobile]);
 
-  // ── Drag gesture ───────────────────────────────────────────────────────────
+  // ── Panel outer ref (used for search-results positioning) ─────────────────
   const panelRef = useRef(null);
-  const dragRef  = useRef(null);
-  const [liveTransform, setLiveTransform] = useState(null);
-
-  const onDragStart = useCallback((e) => {
-    if (!isMobile) return;
-    const touch = e.touches[0];
-    dragRef.current = { startY: touch.clientY, startTime: Date.now(), baseY: snappedTranslateY };
-    setLiveTransform(snappedTranslateY);
-  }, [isMobile, snappedTranslateY]);
-
-  const onDragMove = useCallback((e) => {
-    if (!dragRef.current) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const dy    = touch.clientY - dragRef.current.startY;
-    // Clamp between stage 3 (0) and stage 0 (most closed).
-    setLiveTransform(Math.max(0, Math.min(snapPositions[0], dragRef.current.baseY + dy)));
-  }, [snapPositions]);
-
-  // Non-passive touchmove so e.preventDefault() blocks scroll passthrough.
-  // Applied to both the header and the pinned section (stage 1).
-  useEffect(() => {
-    const els = [headerRef.current, pinnedRef.current].filter(Boolean);
-    els.forEach((el) => el.addEventListener('touchmove', onDragMove, { passive: false }));
-    return () => els.forEach((el) => el.removeEventListener('touchmove', onDragMove));
-  }, [onDragMove]);
-
-  const onDragEnd = useCallback((e) => {
-    if (!dragRef.current) return;
-    const touch = e.changedTouches[0];
-    const dy  = touch.clientY - dragRef.current.startY;
-    const dt  = Math.max(1, Date.now() - dragRef.current.startTime);
-    const vel = dy / dt; // px/ms — positive = downward
-
-    // Project position forward ~150 ms to factor in momentum.
-    const projected = dragRef.current.baseY + dy + vel * 150;
-    dragRef.current = null;
-    setLiveTransform(null);
-
-    // Snap to whichever stage's translateY is nearest the projected position.
-    const best = snapPositions
-      .map((y, i) => ({ i, d: Math.abs(y - projected) }))
-      .sort((a, b) => a.d - b.d)[0].i;
-    setStage(best);
-  }, [snapPositions]);
-
-  // ── Pinned section: native touch handlers ───────────────────────────────────
-  // Native listeners fire as the event bubbles through the real DOM, BEFORE
-  // React processes synthetic events at the root container. This means they
-  // are never blocked by React’s e.stopPropagation() in any child element,
-  // which is why this is more reliable than React onTouchStart/onTouchEnd on
-  // the pinned div.
-  //
-  // • e.target.closest(‘input’) — exempts date & range inputs so they keep
-  //   their native behaviour (date picker, slider).
-  // • Non-passive touchend — lets us call e.preventDefault() on significant
-  //   drags starting from buttons (sun/moon) to suppress the synthesised
-  //   click that would otherwise fight the panel-close action.
-  useEffect(() => {
-    const el = pinnedRef.current;
-    if (!el) return;
-
-    let touchStartY = 0, touchStartTime = 0, pinnedActive = false;
-
-    const handleTouchStart = (e) => {
-      if (window.innerWidth >= 768) return;
-      if (e.target.closest('input')) return; // let date/range inputs work natively
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
-      pinnedActive = true;
-      // Prime the shared dragRef so onDragMove can do live panel tracking.
-      dragRef.current = { startY: touchStartY, startTime: touchStartTime, baseY: snappedTYRef.current };
-      setLiveTransform(snappedTYRef.current);
-    };
-
-    const handleTouchEnd = (e) => {
-      if (!pinnedActive) return;
-      pinnedActive = false;
-      const dy  = e.changedTouches[0].clientY - touchStartY;
-      const dt  = Math.max(1, Date.now() - touchStartTime);
-      const vel = dy / dt;
-
-      dragRef.current = null;
-      setLiveTransform(null);
-
-      // Suppress synthesised click on buttons when a flick is detected, so
-      // tapping sun/moon (small dy) still fires onClick, but dragging closes.
-      const isSignificantMove = Math.abs(vel) > 0.2 || Math.abs(dy) > 30;
-      if (isSignificantMove) e.preventDefault();
-
-      const projected = snappedTYRef.current + dy + vel * 150;
-      const snaps = snapPositionsRef.current;
-      const best = snaps
-        .map((y, i) => ({ i, d: Math.abs(y - projected) }))
-        .sort((a, b) => a.d - b.d)[0].i;
-      setStage(best);
-    };
-
-    el.addEventListener('touchstart', handleTouchStart, { passive: true });
-    el.addEventListener('touchend',   handleTouchEnd,   { passive: false });
-    return () => {
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchend',   handleTouchEnd);
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const panelStyle = useMemo(() => {
-    if (!isMobile) return undefined;
-    const ty = liveTransform !== null ? liveTransform : snappedTranslateY;
-    return {
-      transform:  `translateY(${ty}px)`,
-      transition: liveTransform !== null ? 'none' : undefined,
-      willChange: 'transform',
-    };
-  }, [isMobile, liveTransform, snappedTranslateY]);
 
   // ── Search results bottom position ─────────────────────────────────────────
-  const currentTranslateY = liveTransform !== null ? liveTransform : snappedTranslateY;
   const panelH = panelRef.current?.offsetHeight ?? vp.vh;
   const resultsBottomPx = panelH - currentTranslateY + 4;
-
-  // ── Scroll-body drag-to-close ──────────────────────────────────────────────
-  // When the panel is open and the user pulls down from the very top of the
-  // scroll area, collapse the panel instead of rubber-banding. Normal
-  // scrolling (including past the bottom) is unaffected.
-  const scrollDragRef = useRef(null);
-
-  const onScrollBodyTouchStart = useCallback((e) => {
-    if (window.innerWidth >= 768) return;
-    scrollDragRef.current = { startY: e.touches[0].clientY, startTime: Date.now() };
-  }, []);
-
-  const onScrollBodyTouchMove = useCallback((e) => {
-    if (!scrollDragRef.current) return;
-    const el = scrollBodyRef.current;
-    if (!el) return;
-    const dy = e.touches[0].clientY - scrollDragRef.current.startY;
-    if (el.scrollTop === 0 && dy > 0) {
-      e.preventDefault(); // block rubber-band; we handle this gesture
-    } else {
-      scrollDragRef.current = null; // normal scroll — let browser handle it
-    }
-  }, []);
-
-  const onScrollBodyTouchEnd = useCallback((e) => {
-    if (!scrollDragRef.current) return;
-    const dy  = e.changedTouches[0].clientY - scrollDragRef.current.startY;
-    const dt  = Math.max(1, Date.now() - scrollDragRef.current.startTime);
-    const vel = dy / dt;
-    scrollDragRef.current = null;
-    // Pull-down from scroll body top collapses one stage (3→2, 2→1).
-    if (vel > 0.3 || dy > 60) setStage((s) => Math.max(0, s - 1));
-  }, []);
-
-  useEffect(() => {
-    const el = scrollBodyRef.current;
-    if (!el) return;
-    el.addEventListener('touchmove', onScrollBodyTouchMove, { passive: false });
-    return () => el.removeEventListener('touchmove', onScrollBodyTouchMove);
-  }, [onScrollBodyTouchMove]);
 
   // ── Scroll-to-section refs & callback ─────────────────────────────────────
   const solarSectionRef = useRef(null);
