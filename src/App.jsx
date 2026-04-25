@@ -8,7 +8,7 @@
  * @module App
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
@@ -19,6 +19,7 @@ import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useDebounce } from './hooks/useDebounce';
 import { useCompassHeading } from './hooks/useCompassHeading';
+import { usePersistentState } from './hooks/usePersistentState';
 import { API } from './config';
 
 /**
@@ -33,14 +34,21 @@ function currentMinutes() {
 
 function AppContent() {
   const now = new Date();
-  const [coords, setCoords] = useState(DEFAULT_COORDS);
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [day, setDay] = useState(now.getDate());
+
+  // ── Persistent state hydration ──────────────────────────────────────────
+  // savedState is read synchronously from localStorage before the first
+  // render so initial useState() calls below can use it directly.
+  const { savedState, persist } = usePersistentState(800);
+
+  const [coords, setCoords]         = useState(savedState?.coords      ?? DEFAULT_COORDS);
+  const [year,   setYear]           = useState(now.getFullYear());
+  const [month,  setMonth]          = useState(now.getMonth() + 1);
+  const [day,    setDay]            = useState(now.getDate());
   const [timeMinutes, setTimeMinutes] = useState(currentMinutes());
-  const [mapStyle, setMapStyle] = useState('dark');
-  const [panelOpen, setPanelOpen] = useState(true);
-  const [overlayZoom, setOverlayZoom] = useState(DEFAULT_ZOOM);
+  const [mapStyle,    setMapStyle]  = useState(savedState?.mapStyle     ?? 'dark');
+  const [panelOpen,   setPanelOpen] = useState(true);
+  const [overlayZoom, setOverlayZoom] = useState(savedState?.overlayZoom ?? DEFAULT_ZOOM);
+  const [use24h,      setUse24h]    = useState(savedState?.use24h       ?? false);
 
   // Overlay radius scales with the chosen zoom level so arcs/lines always
   // fit the visible map area regardless of how far the user has zoomed in.
@@ -56,20 +64,31 @@ function AppContent() {
   const { geolocate } = useGeolocation(setCoords);
 
   // Track whether the Zenith button is in its "gold" / my-location state.
-  const [zenithGold, setZenithGold] = useState(false);
-  // Track whether the Zenith button was tapped to center the map; stays
-  // blue until the user touches the map again.
-  const [zenithBlue, setZenithBlue] = useState(false);
-  // Tracks whether the current coords came from geolocation. When true,
-  // re-centering restores gold (not blue) because the location is still
-  // the user's physical position.
-  const isGeolocatedRef = useRef(false);
+  // Restore gold if the last session ended with a geolocated position, or
+  // blue if there are stored coords that weren't from GPS.
+  const [zenithGold, setZenithGold] = useState(savedState?.wasGeolocated ?? false);
+  const [zenithBlue, setZenithBlue] = useState(
+    !!(savedState && !savedState.wasGeolocated),
+  );
+  // Tracks whether the current coords came from geolocation.
+  const isGeolocatedRef = useRef(savedState?.wasGeolocated ?? false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
     coords, year, month, day, timeMinutes, timezone,
   );
 
-  const { heading } = useCompassHeading();
+  const { heading, requestPermission } = useCompassHeading();
+
+  // ── Persist state whenever key values change ────────────────────────────
+  useEffect(() => {
+    persist({
+      coords,
+      overlayZoom,
+      mapStyle,
+      use24h,
+      wasGeolocated: isGeolocatedRef.current,
+    });
+  }, [coords, overlayZoom, mapStyle, use24h, persist]);
 
   /* ---- Handlers ---- */
   // Called when the user manually picks a location — keep the title button
@@ -89,6 +108,7 @@ function AppContent() {
   }, [setZenithBlue, setZenithGold]);
 
 
+  // Centers the map on the given coordinates (or current coords if not provided).
   const handleCenterMap = useCallback((overrideCoords) => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
@@ -112,19 +132,24 @@ function AppContent() {
         : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
       duration: TRANSITIONS.flyToDuration,
     });
+
   }, [coords, mapRef, overlayRadius]);
 
-    // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
+  // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
   // Optimistically turns the button gold, then requests geolocation; reverts
   // the gold state if the permission is denied.
+  // Also requests device compass permission on iOS 13+ at this point since
+  // it requires a user gesture and Zenith Gold is the natural trigger.
   const handleZenithHold = useCallback(() => {
     isGeolocatedRef.current = true;
     setZenithGold(true);
+    // Request compass (iOS requires a user-gesture; safe to call elsewhere too)
+    requestPermission();
     geolocate({
       onSuccess: (c) => handleCenterMap(c),
       onError: () => { isGeolocatedRef.current = false; setZenithGold(false); },
     });
-  }, [geolocate, handleCenterMap]);
+  }, [geolocate, handleCenterMap, requestPermission]);
 
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
@@ -138,6 +163,7 @@ function AppContent() {
     handleCenterMap();
   }, [handleCenterMap]);
 
+  // Called when the overlay zoom slider changes. Similar to handleCenterMap but also updates the zoom level and doesn't change the center coords.
   const handleOverlayZoomChange = useCallback((newZoom) => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
@@ -208,6 +234,8 @@ function AppContent() {
         zenithGold={zenithGold}
         onZenithTap={handleZenithTap}
         zenithBlue={zenithBlue}
+        use24h={use24h}
+        onUse24hChange={setUse24h}
       />
 
       <NotificationToast />

@@ -33,6 +33,9 @@ export const DEFAULT_COORDS = { lat: 40.7128, lng: -74.006 }; // New York City
 export const DEFAULT_ZOOM = 13;
 export const OVERLAY_RADIUS = 0.004; // degrees (~400 m) for sun/moon arcs
 
+/** Overlay zoom slider bounds and step. */
+export const OVERLAY_ZOOM = { min: 9, max: 17, step: 0.01 };
+
 /** Map layer styles keyed by layer ID. */
 export const MAP_LAYER_STYLES = {
   // Sun arc — above horizon

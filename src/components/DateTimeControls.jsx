@@ -59,6 +59,22 @@ function dateToMinuteInZone(d, tz) {
  * This means equatorial locations consistently sit near the midpoint,
  * while polar locations span the full range.
  */
+/**
+ * Return the day-length in ms for `date` at `lat`/`lng`.
+ * Handles polar scenarios (always-up = full day, always-down = 0).
+ */
+function getDayLengthMs(date, lat, lng) {
+  const times = SunCalc.getTimes(date, lat, lng);
+  const rise = times.sunrise;
+  const set  = times.sunset;
+  if (rise && set && !isNaN(rise.getTime()) && !isNaN(set.getTime())) {
+    return Math.max(0, set.getTime() - rise.getTime());
+  }
+  // Polar scenario: check altitude at solar noon
+  const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  return SunCalc.getPosition(noon, lat, lng).altitude > 0 ? 86400000 : 0;
+}
+
 function buildYearlyGradient(lat, lng, year) {
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInYear = isLeap ? 366 : 365;
@@ -86,32 +102,12 @@ function buildYearlyGradient(lat, lng, year) {
   const stops = [];
   for (let doy = 1; doy <= daysInYear; doy += 10) {
     const date = new Date(year, 0, doy);
-    const times = SunCalc.getTimes(date, lat, lng);
-    const rise = times.sunrise;
-    const set  = times.sunset;
-    let len;
-    if (rise && set && !isNaN(rise.getTime()) && !isNaN(set.getTime())) {
-      len = Math.max(0, set.getTime() - rise.getTime());
-    } else {
-      // Polar scenario: check if sun is up at solar noon
-      const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
-      len = SunCalc.getPosition(noon, lat, lng).altitude > 0 ? 86400000 : 0;
-    }
+    const len = getDayLengthMs(date, lat, lng);
     const pct = (((doy - 1) / (daysInYear - 1)) * 100).toFixed(2);
     stops.push(`${colorAt(len)} ${pct}%`);
   }
   // Guarantee an endpoint at exactly 100%
-  const lastDate = new Date(year, 11, 31);
-  const lastTimes = SunCalc.getTimes(lastDate, lat, lng);
-  const lastRise = lastTimes.sunrise;
-  const lastSet  = lastTimes.sunset;
-  let lastLen;
-  if (lastRise && lastSet && !isNaN(lastRise.getTime()) && !isNaN(lastSet.getTime())) {
-    lastLen = Math.max(0, lastSet.getTime() - lastRise.getTime());
-  } else {
-    const noon = new Date(year, 11, 31, 12, 0, 0);
-    lastLen = SunCalc.getPosition(noon, lat, lng).altitude > 0 ? 86400000 : 0;
-  }
+  const lastLen = getDayLengthMs(new Date(year, 11, 31), lat, lng);
   stops.push(`${colorAt(lastLen)} 100%`);
 
   return `linear-gradient(to right, ${stops.join(', ')})`;

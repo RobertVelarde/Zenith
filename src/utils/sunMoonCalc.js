@@ -22,6 +22,51 @@ function safeDate(d) {
   return d && !isNaN(d.getTime()) ? d : null;
 }
 
+/**
+ * Check the previous day, then the next day, for a moonrise or moonset
+ * field that was absent on `date`.  Returns the found Date and relative
+ * day offset, or `{ time: null, day: 0 }` if not found on either.
+ *
+ * @param {Date}   date  - The reference date.
+ * @param {number} lat   - Latitude.
+ * @param {number} lng   - Longitude.
+ * @param {'rise'|'set'} field - Which field to look up.
+ * @returns {{ time: Date|null, day: -1|0|1 }}
+ */
+function findCrossDayTime(date, lat, lng, field) {
+  const prevDate = new Date(date);
+  prevDate.setDate(prevDate.getDate() - 1);
+  const prevTimes = SunCalc.getMoonTimes(prevDate, lat, lng);
+  if (prevTimes[field] && safeDate(prevTimes[field])) {
+    return { time: safeDate(prevTimes[field]), day: -1 };
+  }
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + 1);
+  const nextTimes = SunCalc.getMoonTimes(nextDate, lat, lng);
+  if (nextTimes[field] && safeDate(nextTimes[field])) {
+    return { time: safeDate(nextTimes[field]), day: 1 };
+  }
+  return { time: null, day: 0 };
+}
+
+/**
+ * Build an azimuth/altitude trajectory at 5-minute intervals for the full day.
+ *
+ * @param {Function} getSkyPos - `SunCalc.getPosition` or `SunCalc.getMoonPosition`.
+ * @param {number}   lat       - Latitude.
+ * @param {number}   lng       - Longitude.
+ * @param {Function} makeDate  - Factory `(minuteOfDay) => Date` in the correct timezone.
+ * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
+ */
+function buildTrajectory(getSkyPos, lat, lng, makeDate) {
+  const pts = [];
+  for (let m = 0; m < 1440; m += 5) {
+    const p = getSkyPos(makeDate(m), lat, lng);
+    pts.push({ minutes: m, azimuthDeg: normAz(p.azimuth), altitudeDeg: toDeg(p.altitude) });
+  }
+  return pts;
+}
+
 /* ---------- Sun ---------- */
 
 /**
@@ -73,40 +118,12 @@ export function getMoonData(date, lat, lng) {
 
   // If rise is missing today, check yesterday then tomorrow
   if (!rise) {
-    const prevDate = new Date(date);
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevTimes = SunCalc.getMoonTimes(prevDate, lat, lng);
-    if (prevTimes.rise && safeDate(prevTimes.rise)) {
-      rise = safeDate(prevTimes.rise);
-      riseDay = -1;
-    } else {
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      const nextTimes = SunCalc.getMoonTimes(nextDate, lat, lng);
-      if (nextTimes.rise && safeDate(nextTimes.rise)) {
-        rise = safeDate(nextTimes.rise);
-        riseDay = 1;
-      }
-    }
+    ({ time: rise, day: riseDay } = findCrossDayTime(date, lat, lng, 'rise'));
   }
 
   // If set is missing today, check yesterday then tomorrow
   if (!set) {
-    const prevDate = new Date(date);
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevTimes = SunCalc.getMoonTimes(prevDate, lat, lng);
-    if (prevTimes.set && safeDate(prevTimes.set)) {
-      set = safeDate(prevTimes.set);
-      setDay = -1;
-    } else {
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      const nextTimes = SunCalc.getMoonTimes(nextDate, lat, lng);
-      if (nextTimes.set && safeDate(nextTimes.set)) {
-        set = safeDate(nextTimes.set);
-        setDay = 1;
-      }
-    }
+    ({ time: set, day: setDay } = findCrossDayTime(date, lat, lng, 'set'));
   }
 
   const eventAzimuths = {};
@@ -149,17 +166,7 @@ export function getMoonData(date, lat, lng) {
  * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
  */
 export function getSunTrajectory(dateBase, lat, lng, makeDate) {
-  const pts = [];
-  for (let m = 0; m < 1440; m += 5) {
-    const d = makeDate(m);
-    const p = SunCalc.getPosition(d, lat, lng);
-    pts.push({
-      minutes: m,
-      azimuthDeg: normAz(p.azimuth),
-      altitudeDeg: toDeg(p.altitude),
-    });
-  }
-  return pts;
+  return buildTrajectory(SunCalc.getPosition, lat, lng, makeDate);
 }
 
 /**
@@ -172,17 +179,7 @@ export function getSunTrajectory(dateBase, lat, lng, makeDate) {
  * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
  */
 export function getMoonTrajectory(dateBase, lat, lng, makeDate) {
-  const pts = [];
-  for (let m = 0; m < 1440; m += 5) {
-    const d = makeDate(m);
-    const p = SunCalc.getMoonPosition(d, lat, lng);
-    pts.push({
-      minutes: m,
-      azimuthDeg: normAz(p.azimuth),
-      altitudeDeg: toDeg(p.altitude),
-    });
-  }
-  return pts;
+  return buildTrajectory(SunCalc.getMoonPosition, lat, lng, makeDate);
 }
 
 /* ---------- Moon phase name ---------- */

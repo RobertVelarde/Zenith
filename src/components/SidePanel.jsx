@@ -4,16 +4,34 @@
  * On desktop it renders as a left-docked panel; on mobile it becomes a
  * bottom sheet with a persistent header bar.
  *
+ * Mobile layout — three distinct sections with known, measured heights:
+ *
+ *   ┌─────────────────────┐
+ *   │   HEADER SECTION    │  ← title, search, coords, settings, arrow
+ *   ├─────────────────────┤
+ *   │   PINNED SECTION    │  ← overlay scale slider (always here, never moves)
+ *   ├─────────────────────┤
+ *   │   SCROLLABLE BODY   │  ← date/time, solar, lunar, … (off-screen when peeked)
+ *   └─────────────────────┘
+ *
+ * When peeked the panel is translated downward so only the header + pinned
+ * sections are visible.  Because the pinned section never changes parents,
+ * there is no layout jitter during the open/close transition.
+ *
+ * Exposed CSS custom properties (mobile only; 0 on desktop):
+ *   --panel-bar-h     : peek bar height = headerH + pinnedH  (toast positioning)
+ *   --panel-visible-h : visible panel slice (peek bar when peeked, capped at
+ *                       vh−vw when open — used by map padding)
+ *
  * @module components/SidePanel
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import DateTimeControls from './DateTimeControls';
 import SolarInfo from './SolarInfo';
 import LunarInfo from './LunarInfo';
 import AdvancedPanel from './AdvancedPanel';
-import ExternalLinks from './ExternalLinks';
-import { LABELS, MAPBOX_TOKEN, API, DEFAULT_ZOOM, ZENITH } from '../config';
+import { LABELS, MAPBOX_TOKEN, API, DEFAULT_ZOOM, ZENITH, OVERLAY_ZOOM } from '../config';
 import { useNotification } from '../hooks/notificationContext';
 
 export default function SidePanel({
@@ -37,6 +55,8 @@ export default function SidePanel({
   zenithGold,
   onZenithTap,
   zenithBlue,
+  use24h,
+  onUse24hChange,
 }) {
   const { notify } = useNotification();
 
@@ -61,8 +81,6 @@ export default function SidePanel({
   const glassClass = isLight ? 'glass-light' : 'glass';
   const textPrimary = isLight ? 'text-slate-900' : 'text-white';
   const borderColor = isLight ? 'border-slate-200' : 'border-white/5';
-
-  const [use24h, setUse24h] = useState(false);
 
   // ── Tap-flash state for instant-action buttons ─────────────────────────────
   const [titleFlash,  setTitleFlash]  = useState(false);
@@ -159,131 +177,160 @@ export default function SidePanel({
     setSearchActive(false);
   };
 
-  // ── Peek (partial-collapse) state ──────────────────────────────────────────
-  // On mobile the bottom sheet starts peeked — only the header bar is visible.
-  // The arrow button (or a flick gesture) toggles between peeked and fully open.
-  // Desktop is unaffected: peekStyle is always undefined when >= md.
-  const [peeked, setPeeked] = useState(() => window.innerWidth < 768);
-  const peekZoneRef = useRef(null);
-  const [peekZoneHeight, setPeekZoneHeight] = useState(0);
+  // ── Three-section height tracking ──────────────────────────────────────────
+  // Section 1: headerRef  — button/title row (drag handle on mobile)
+  // Section 2: pinnedRef  — overlay scale slider (always between header and body)
+  // Section 3: scrollBodyRef — scrollable content (off-screen when peeked)
+  //
+  // Heights are measured synchronously via useLayoutEffect so the panel is
+  // already positioned correctly before the browser's first paint — no flash.
+  const headerRef     = useRef(null);
+  const pinnedRef     = useRef(null);
+  const scrollBodyRef = useRef(null);
 
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [pinnedHeight, setPinnedHeight] = useState(0);
+  const [scrollBodyHeight, setScrollBodyHeight] = useState(0);
+  // Cache the last non-zero pinnedHeight so peekBarH is correct on the very
+  // first frame after transitioning open → peeked (before ResizeObserver fires).
+  const lastPinnedHeightRef = useRef(0);
+
+  // Synchronous initial measurement — fires before paint, preventing any
+  // visible jump from translateY(0) → peeked position.
+  useLayoutEffect(() => {
+    if (headerRef.current) setHeaderHeight(headerRef.current.offsetHeight);
+    if (pinnedRef.current) {
+      const ph = pinnedRef.current.offsetHeight;
+      setPinnedHeight(ph);
+      if (ph > 0) lastPinnedHeightRef.current = ph;
+    }
+    if (scrollBodyRef.current) setScrollBodyHeight(scrollBodyRef.current.offsetHeight);
+  }, []);
+
+  // Keep measurements updated as content reflows (e.g. search bar opens,
+  // scrollable body grows when the slider migrates into it).
   useEffect(() => {
-    const el = peekZoneRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setPeekZoneHeight(el.offsetHeight));
-    ro.observe(el);
-    setPeekZoneHeight(el.offsetHeight);
+    const hEl = headerRef.current;
+    const pEl = pinnedRef.current;
+    const sEl = scrollBodyRef.current;
+    if (!hEl || !pEl || !sEl) return;
+    const ro = new ResizeObserver(() => {
+      setHeaderHeight(hEl.offsetHeight);
+      const ph = pEl.offsetHeight;
+      setPinnedHeight(ph);
+      if (ph > 0) lastPinnedHeightRef.current = ph;
+      setScrollBodyHeight(sEl.offsetHeight);
+    });
+    ro.observe(hEl);
+    ro.observe(pEl);
+    ro.observe(sEl);
     return () => ro.disconnect();
   }, []);
 
-  // Expose the header bar height as a CSS custom property so other components
-  // (e.g. NotificationToast) can position themselves above the panel on mobile
-  // without any prop-drilling or shared context.
+  
+  // ── Peek (partial-collapse) state ──────────────────────────────────────────
+  const [peeked, setPeeked] = useState(() => window.innerWidth < 768);
+
+  // Sync --peeked CSS var; scroll body back to top when collapsing.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--peeked', `${peeked}`);
+    if (peeked && scrollBodyRef.current) {
+      scrollBodyRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [peeked]);
+
+  // Peek bar: visible height when the panel is in the peeked state.
+  // Use lastPinnedHeightRef as fallback so the value is correct on the first
+  // frame after peeked becomes true (before ResizeObserver fires and updates
+  // pinnedHeight from display:none → display:block).
+  const peekBarH = headerHeight + (pinnedHeight || lastPinnedHeightRef.current);
+  // Total panel height (header + pinned + actual rendered scrollable body).
+  const totalPanelH = headerHeight + pinnedHeight + scrollBodyHeight;
+
+  // ── CSS custom properties ──────────────────────────────────────────────────
+  // --panel-bar-h     : peek bar height (used by NotificationToast positioning)
+  // --panel-visible-h : actual visible slice (used by App fitBounds padding)
   useEffect(() => {
     const update = () => {
-      document.documentElement.style.setProperty(
-        '--panel-bar-h',
-        window.innerWidth < 768 ? `${peekZoneHeight}px` : '0px',
-      );
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [peekZoneHeight]);
-
-  // Expose the current light/dark theme so components outside the React
-  // prop tree (e.g. NotificationToast at the app root) can stay in sync.
-  useEffect(() => {
-    document.documentElement.dataset.uiTheme = isLight ? 'light' : 'dark';
-  }, [isLight]);
-
-  // Expose the full visible panel height so App can pad fitBounds correctly.
-  // --panel-bar-h   = peek bar height only (used by toast positioning)
-  // --panel-visible-h = actual visible slice of the panel (bar when peeked,
-  //                     full panel when open)
-  useEffect(() => {
-    const update = () => {
-      // Desktop: panel doesn't affect map height.
       if (window.innerWidth >= 768) {
+        document.documentElement.style.setProperty('--panel-bar-h', '0px');
         document.documentElement.style.setProperty('--panel-visible-h', '0px');
         return;
       }
-
-      const h = panelRef.current?.offsetHeight ?? 0;
-      let visibleH = peeked ? peekZoneHeight : h;
-
-      // When fully open on mobile, cap the visible panel height so the
-      // remaining map area is at least square (height >= width). That means
-      // panel visible height <= window.innerHeight - window.innerWidth.
-      if (!peeked) {
-        const maxVisible = Math.max(0, window.innerHeight - window.innerWidth);
-        if (maxVisible > 0) {
-          visibleH = Math.min(visibleH, maxVisible);
-        }
+      document.documentElement.style.setProperty('--panel-bar-h', `${peekBarH}px`);
+      if (peeked) {
+        document.documentElement.style.setProperty('--panel-visible-h', `${peekBarH}px`);
+      } else {
+        document.documentElement.style.setProperty('--panel-visible-h', `${totalPanelH}px`);
       }
-
-      document.documentElement.style.setProperty('--panel-visible-h', `${visibleH}px`);
     };
-
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [peeked, peekZoneHeight]);
+  }, [peeked, peekBarH, totalPanelH]);
 
-  // ── Scroll-body max height ──────────────────────────────────────────────────
-  // Cap total panel height (header + body) to (vh − vw) so the remaining map
-  // area is at least a square. Recomputed whenever the header height or the
-  // viewport dimensions change.
+  // ── Scrollable body max height ─────────────────────────────────────────────
+  // Constrain the scrollable body so total panel height ≤ (vh − vw),
+  // keeping at least a square of map visible when the panel is open.
   const [scrollBodyMaxH, setScrollBodyMaxH] = useState(null);
 
   useEffect(() => {
     const update = () => {
-      if (window.innerWidth >= 768) {
-        setScrollBodyMaxH(null); // desktop: panel is side-docked, no constraint
-        return;
-      }
-      const maxPanel = window.innerHeight - window.innerWidth;
-      setScrollBodyMaxH(Math.max(0, maxPanel - peekZoneHeight));
+      if (window.innerWidth >= 768) { setScrollBodyMaxH(null); return; }
+      const maxPanel = Math.max(0, window.innerHeight - window.innerWidth);
+      // The pinned section is hidden when the panel is open, so the scroll
+      // body takes all space below the header (slider is inside it instead).
+      setScrollBodyMaxH(Math.max(0, maxPanel - headerHeight));
     };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [peekZoneHeight]);
+  }, [headerHeight]);
 
-  // Keep a stable ref to onCenterMap so the peeked effect below can always
-  // call the latest version without listing it as a dependency (which would
-  // cause spurious re-centres on every coords change).
+  // Expose light/dark theme so components outside the React prop tree stay in sync.
+  useEffect(() => {
+    document.documentElement.dataset.uiTheme = isLight ? 'light' : 'dark';
+  }, [isLight]);
+
+  // Keep a stable ref to onCenterMap to avoid stale closure issues.
   const onCenterMapRef = useRef(onCenterMap);
   useEffect(() => { onCenterMapRef.current = onCenterMap; }, [onCenterMap]);
 
-  // When the panel opens or closes on mobile, re-centre the map inside the
-  // visible (unobscured). When collapsing, also scroll the body back to top.
+  // Re-centre the map after the panel opens or closes on mobile.
   const isFirstPeekEffect = useRef(true);
   useEffect(() => {
     if (isFirstPeekEffect.current) { isFirstPeekEffect.current = false; return; }
     if (window.innerWidth >= 768) return;
-    if (peeked && scrollBodyRef.current) {
-      scrollBodyRef.current.scrollTo({ top: 0, behavior: 'instant' });
-    }
-    const id = setTimeout(() => onCenterMapRef.current());
+    const id = setTimeout(() => onCenterMapRef.current?.(), 50);
     return () => clearTimeout(id);
   }, [peeked]);
 
-  // Only apply the peek translateY on mobile (< 768 px).
+  // Initial centering: once heights are measured (and --panel-visible-h is set),
+  // centre the map on the default location with correct bottom padding.
+  // The 200 ms delay gives the Mapbox instance time to fully initialise.
+  const hasInitialCentered = useRef(false);
+  useEffect(() => {
+    if (hasInitialCentered.current || peekBarH === 0 || window.innerWidth >= 768) return;
+    hasInitialCentered.current = true;
+    const id = setTimeout(() => onCenterMapRef.current?.(), 200);
+    return () => clearTimeout(id);
+  }, [peekBarH]);
+
+  // Slide the panel so only header + pinned are above the viewport bottom.
   const peekStyle =
-    peeked && peekZoneHeight > 0 && window.innerWidth < 768
-      ? { transform: `translateY(calc(100% - ${peekZoneHeight}px))` }
+    peeked && peekBarH > 0 && window.innerWidth < 768
+      ? { transform: `translateY(calc(100% - ${peekBarH}px))` }
       : undefined;
 
   // ── Drag gesture ───────────────────────────────────────────────────────────
-  const panelRef  = useRef(null);
-  const dragRef   = useRef(null);
+  const panelRef = useRef(null);
+  const dragRef  = useRef(null);
   const [liveTransform, setLiveTransform] = useState(null);
 
   const computeBaseY = useCallback(() => {
     const h = panelRef.current?.offsetHeight ?? 0;
-    return peeked ? h - peekZoneHeight : 0;
-  }, [peeked, peekZoneHeight]);
+    return peeked ? h - peekBarH : 0;
+  }, [peeked, peekBarH]);
 
   const onDragStart = useCallback((e) => {
     if (window.innerWidth >= 768) return;
@@ -302,9 +349,9 @@ export default function SidePanel({
   }, []);
 
   // React's onTouchMove is passive by default, so e.preventDefault() silently
-  // fails. We register a native non-passive listener instead.
+  // fails. We register a native non-passive listener on the header element instead.
   useEffect(() => {
-    const el = peekZoneRef.current;
+    const el = headerRef.current;
     if (!el) return;
     el.addEventListener('touchmove', onDragMove, { passive: false });
     return () => el.removeEventListener('touchmove', onDragMove);
@@ -337,18 +384,14 @@ export default function SidePanel({
     ? { transform: `translateY(${liveTransform}px)`, transition: 'none', willChange: 'transform' }
     : peekStyle ? { ...peekStyle, willChange: 'transform' } : undefined;
 
-  // ── Search results positioning ─────────────────────────────────────────────
-  // The results list must float just above the top of the panel, wherever it
-  // currently sits — open, peeked, or mid-drag.
-  // Panel is `bottom-0`; its top (in viewport px from the bottom) =
-  //   panelHeight − currentTranslateY.
-  // So: results bottom = panelHeight − currentTranslateY + gap.
+  // ── Search results bottom position ─────────────────────────────────────────
+  // Float the results list just above the panel top regardless of translation.
   const panelH = panelRef.current?.offsetHeight ?? 0;
   const currentTranslateY =
     liveTransform !== null
       ? liveTransform
-      : peeked && peekZoneHeight > 0
-        ? panelH - peekZoneHeight
+      : peeked && peekBarH > 0
+        ? panelH - peekBarH
         : 0;
   const resultsBottomPx = panelH - currentTranslateY + 4;
 
@@ -356,7 +399,6 @@ export default function SidePanel({
   // When the panel is open and the user pulls down from the very top of the
   // scroll area, collapse the panel instead of rubber-banding. Normal
   // scrolling (including past the bottom) is unaffected.
-  const scrollBodyRef = useRef(null);
   const scrollDragRef = useRef(null);
 
   const onScrollBodyTouchStart = useCallback((e) => {
@@ -395,10 +437,40 @@ export default function SidePanel({
   // ── Icon button helper ─────────────────────────────────────────────────────
   const iconBtn = (active) =>
     `w-9 h-9 shrink-0 flex items-center justify-center rounded-xl text-sm transition-all duration-200
-    ${active 
-      ? 'bg-cyan-400 text-black shadow-[0_0_12px_2px_rgba(34,211,238,0.45)] border-black-400/50' 
+    ${active
+      ? 'bg-cyan-400 text-black shadow-[0_0_12px_2px_rgba(34,211,238,0.45)] border-black-400/50'
       : `${glassClass} ${textPrimary}`
     }`;
+
+  // ── Overlay scale slider (single definition, rendered in pinned section) ───
+  const overlayScaleSlider = (
+    <>
+      <div className="flex justify-between items-center mt-2 mb-1">
+        <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
+          Overlay Scale
+        </label>
+        <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+          {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
+            : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
+            : 'Default'}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={OVERLAY_ZOOM.min}
+        max={OVERLAY_ZOOM.max}
+        step={OVERLAY_ZOOM.step}
+        value={overlayZoom ?? DEFAULT_ZOOM}
+        onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+        className="w-full"
+      />
+      <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+        <span>Far</span>
+        <span>Default</span>
+        <span>Close</span>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -442,15 +514,15 @@ export default function SidePanel({
 
         <div className={`h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
 
-          {/* ── Panel header — shared across all breakpoints ─────────────────
-               Mobile : bottom-sheet strip; touch-drag and arrow toggle peek.
-               Desktop/tablet : top bar with border-b; no arrow, no drag.    */}
+          {/* ── SECTION 1: Header ────────────────────────────────────────────
+               Drag handle for the open/close gesture on mobile.
+               The non-passive touchmove listener is registered on headerRef
+               so e.preventDefault() correctly suppresses scroll passthrough. */}
           <div
-            ref={peekZoneRef}
+            ref={headerRef}
             onTouchStart={onDragStart}
             onTouchEnd={onDragEnd}
-            className={`shrink-0 relative select-none md:border-b ${borderColor}`}
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            className={`shrink-0 relative select-none`}
           >
             <div className="flex items-center gap-1.5 px-2 py-2">
 
@@ -524,7 +596,7 @@ export default function SidePanel({
                       <button
                         onClick={() => {
                           const next = !use24h;
-                          setUse24h(next);
+                          onUse24hChange(next);
                           onStyleChange( isSatellite ? 'satellite' :isDark ? 'dark' : 'light');
                         }}
                         className={`flex-1 h-full flex items-center justify-center rounded-xl
@@ -576,7 +648,7 @@ export default function SidePanel({
                       onClick={() => {
                         if (!coords) return;
                         flashBtn(setCoordsFlash, 1000);
-                        const text = "";
+                        const text = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
                         navigator.clipboard.writeText(text).then(
                           () => notify('Coordinates copied!'),
                           () => notify('Copy failed', 'warn'),
@@ -617,7 +689,7 @@ export default function SidePanel({
                 )}
               </div>
 
-              {/* 4. Hamburger / settings button */}
+              {/* Hamburger / settings button */}
               <button
                 onClick={toggleSettings}
                 className={iconBtn(settingsActive)}
@@ -628,7 +700,7 @@ export default function SidePanel({
                 </svg>
               </button>
 
-              {/* 5. Arrow — mobile only; hidden on tablet and desktop */}
+              {/* Arrow — mobile only */}
               <button
                 onClick={() => setPeeked((v) => !v)}
                 className={`${iconBtn(false)} md:hidden`}
@@ -643,46 +715,34 @@ export default function SidePanel({
               </button>
 
             </div>
-
-            {/* Overlay Scale slider — shown in the header bar when peeked on mobile,
-                 or always on desktop/tablet. Moves to the scroll body when open on mobile. */}
-            {(peeked || window.innerWidth >= 768) && (
-              <div
-                className={`px-3 pb-2 border-t ${borderColor}`}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-              >
-                <div className="flex justify-between items-center mt-2 mb-1">
-                  <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Overlay Scale
-                  </label>
-                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
-                      : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
-                      : 'Default'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={9}
-                  max={17}
-                  step={0.01}
-                  value={overlayZoom ?? DEFAULT_ZOOM}
-                  onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
-                  className="w-full"
-                />
-                <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
-                  <span>Far</span>
-                  <span>Default</span>
-                  <span>Close</span>
-                </div>
-              </div>
-            )}
           </div>
+          {/* ── END SECTION 1: Header ───────────────────────────────────────── */}
 
-          {/* ── End panel header ─────────────────────────────────────────────── */}
+          {/* ── SECTION 2: Pinned ────────────────────────────────────────────
+               Visible only when the panel is peeked. Contains the overlay
+               scale slider so the user can adjust it without opening the panel.
+               When the panel opens the slider migrates into the scrollable body
+               (Section 3) and this section collapses to display:none so the
+               scroll body gains the extra space.
+               lastPinnedHeightRef caches the height so peekBarH is correct on
+               the very first frame of the open→peeked transition.           */}
+          <div
+            ref={pinnedRef}
+            className={`shrink-0 px-3 border-t border-b ${borderColor}`}
+            style={{
+              display: peeked ? undefined : 'none',
+              paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            {overlayScaleSlider}
+          </div>
+          {/* ── END SECTION 2: Pinned ───────────────────────────────────────── */}
 
-          {/* ── Scrollable body ───────────────────────────────────────────────── */}
+          {/* ── SECTION 3: Scrollable body ───────────────────────────────────
+               Translated off-screen when peeked; constrained in height so
+               the remaining map area is at least a square.                  */}
           <div
             ref={scrollBodyRef}
             onTouchStart={onScrollBodyTouchStart}
@@ -694,35 +754,17 @@ export default function SidePanel({
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >
-            {/* Overlay Scale slider — shown here when the panel is fully open on mobile */}
-            {(!peeked && window.innerWidth < 768) && (
-              <div className={`pb-3 border-b ${borderColor}`}>
-                <div className="flex justify-between items-center mb-1">
-                  <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Overlay Scale
-                  </label>
-                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {(overlayZoom ?? DEFAULT_ZOOM) < DEFAULT_ZOOM ? 'Zoomed Out'
-                      : (overlayZoom ?? DEFAULT_ZOOM) > DEFAULT_ZOOM ? 'Zoomed In'
-                      : 'Default'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={9}
-                  max={17}
-                  step={0.01}
-                  value={overlayZoom ?? DEFAULT_ZOOM}
-                  onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
-                  className="w-full"
-                />
-                <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
-                  <span>Far</span>
-                  <span>Default</span>
-                  <span>Close</span>
-                </div>
+            {/* ── Overlay scale slider (migrated from pinned section when open) ── */}
+            {!peeked && (
+              <div
+                className={`pb-3 border-b ${borderColor}`}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
+                {overlayScaleSlider}
               </div>
             )}
+
             <DateTimeControls
               year={year}
               month={month}
@@ -746,7 +788,7 @@ export default function SidePanel({
             </div>
 
             <div className={`border-t ${borderColor} pt-3`}>
-              <AdvancedPanel sunData={sunData} timezone={timezone} elevation={elevation} isLight={isLight} use24h={use24h} onToggle24h={() => setUse24h((v) => !v)} />
+              <AdvancedPanel sunData={sunData} timezone={timezone} elevation={elevation} isLight={isLight} use24h={use24h} onToggle24h={() => onUse24hChange(!use24h)} />
             </div>
 
             {timezone && (

@@ -10,6 +10,15 @@
 
 import { OVERLAY_RADIUS } from '../config';
 
+// Scale factors relative to the overlay radius (r)
+const SCALE_EVENT_LINE   = 1.3;   // sunrise/set, moonrise/set, heading lines
+const SCALE_CURRENT_SUN  = 1.15;  // current sun direction line
+const SCALE_SOLAR_NOON   = 0.9;   // solar noon line (slightly shorter)
+const SCALE_MOON         = 0.85;  // moon arc + point + direction line
+
+// Azimuth discontinuity guard: bearing diff above this is treated as a wrap
+const AZ_JUMP_THRESHOLD = 100;
+
 /**
  * Project a point at a given bearing and distance from a centre coordinate.
  *
@@ -43,7 +52,7 @@ function buildArcSegments(trajectory, lat, lng, r) {
   for (const pt of trajectory) {
     const isAbove = pt.altitudeDeg > 0;
     const azDiff = Math.abs(pt.azimuthDeg - prevAz);
-    const jump = Math.min(azDiff, 360 - azDiff) > 100; // guard against discontinuities
+    const jump = Math.min(azDiff, 360 - azDiff) > AZ_JUMP_THRESHOLD;
     if ((isAbove !== prevAbove || jump) && coords.length >= 2) {
       segments.push({ above: prevAbove, coords });
       coords = [];
@@ -76,7 +85,7 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   const alt = sunData.position.altitude;
   const belowHorizon = alt < 0;
 
-  const add = (type, az, dist = r * 1.3) => {
+  const add = (type, az, dist = r * SCALE_EVENT_LINE) => {
     if (az == null) return;
     feats.push({
       type: 'Feature',
@@ -94,13 +103,13 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
     },
     geometry: {
       type: 'LineString',
-      coordinates: [c, project(lat, lng, sunData.position.azimuth, r * 1.15)],
+      coordinates: [c, project(lat, lng, sunData.position.azimuth, r * SCALE_CURRENT_SUN)],
     },
   });
 
   add('sunrise-line', sunData.eventAzimuths.sunrise);
   add('sunset-line', sunData.eventAzimuths.sunset);
-  add('solarnoon-line', sunData.eventAzimuths.solarNoon, r * 0.9);
+  add('solarnoon-line', sunData.eventAzimuths.solarNoon, r * SCALE_SOLAR_NOON);
 
   return { type: 'FeatureCollection', features: feats };
 }
@@ -123,7 +132,7 @@ export function sunPointGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
 
 /* ---------- MOON ARC ---------- */
 export function moonArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
-  const segments = buildArcSegments(trajectory, lat, lng, r * 0.85);
+  const segments = buildArcSegments(trajectory, lat, lng, r * SCALE_MOON);
   return {
     type: 'FeatureCollection',
     features: segments.map(({ above, coords }) => ({
@@ -139,7 +148,7 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
   const c = [lng, lat];
   const alt = moonData.position.altitude;
   const belowHorizon = alt < 0;
-  const coord = project(lat, lng, moonData.position.azimuth, r * 0.85);
+  const coord = project(lat, lng, moonData.position.azimuth, r * SCALE_MOON);
   const features = [
     // Moon azimuth direction line — solid when above, dashed when below
     {
@@ -161,14 +170,14 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
     features.push({
       type: 'Feature',
       properties: { kind: 'moonrise-line' },
-      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonrise, r * 1.3)] },
+      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonrise, r * SCALE_EVENT_LINE)] },
     });
   }
   if (az?.moonset != null) {
     features.push({
       type: 'Feature',
       properties: { kind: 'moonset-line' },
-      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonset, r * 1.3)] },
+      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonset, r * SCALE_EVENT_LINE)] },
     });
   }
 
@@ -186,7 +195,7 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
  * @param {number} r - Overlay radius in degrees.
  */
 export function headingLineGeoJSON(heading, lat, lng, r = OVERLAY_RADIUS) {
-  const tip = project(lat, lng, heading, r * 1.3);
+  const tip = project(lat, lng, heading, r * SCALE_EVENT_LINE);
   return {
     type: 'FeatureCollection',
     features: [

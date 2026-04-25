@@ -128,7 +128,7 @@ export default function MapView({
     map.on('movestart', emitInteraction);
     map.on('dragstart', emitInteraction);
     const container = containerRef.current;
-    const wheelHandler = (ev) => { onUserInteractionRef.current?.(); };
+    const wheelHandler = () => { onUserInteractionRef.current?.(); };
     if (container) container.addEventListener('wheel', wheelHandler, { passive: true });
 
     map.on('error', (e) => {
@@ -330,5 +330,17 @@ function addSourcesAndLayers(map) {
       'line-width': 2.5,
       'line-opacity': 0.9,
     },
+  });
+
+  // ---- Debug bounding-box overlay ----
+  addIf('debug-bounds-box', {
+    id: 'debug-bounds-box', source: 'debug-bounds', type: 'line',
+    filter: ['==', ['get', 'kind'], 'box'],
+    paint: { 'line-color': '#ff0000', 'line-width': 1 },
+  });
+  addIf('debug-bounds-cross', {
+    id: 'debug-bounds-cross', source: 'debug-bounds', type: 'line',
+    filter: ['==', ['get', 'kind'], 'cross'],
+    paint: { 'line-color': '#ff0000', 'line-width': 1 },
   });
 }
