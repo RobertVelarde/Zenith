@@ -181,7 +181,7 @@ export default function MapView({
   }, [coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading, mapRef]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+    <div ref={containerRef} className="fixed inset-0 w-full h-full" />
   );
 }
 

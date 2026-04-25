@@ -190,21 +190,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-/*
- * App root container — full-screen dynamic viewport.
- *
- * Two declarations cascade so every browser gets the right value:
- *   1. height: 100vh  — fallback for iOS Safari < 15.4 and other legacy browsers
- *      that don't support dvh.  On iOS Safari this equals the *large* viewport
- *      (address bar hidden), so the layout may be clipped slightly when the bar
- *      is showing — acceptable as a graceful degradation.
- *   2. height: 100dvh — modern override: Dynamic Viewport Height tracks the
- *      *actual* visible area as the browser chrome expands and collapses.  This
- *      is the fix for the iOS Safari "letterboxing" bug.
+/* * Force the React wrapper to be the full viewport. 
+ * Using height: 100% here is often more reliable than dvh 
+ * for background maps when viewport-fit=cover is active.
  */
 .app-root {
-  height: 100vh; /* legacy fallback */
-  height: 100dvh;
+  height: 100%;
+  width: 100%;
+  position: relative;
 }
 
 /*
@@ -222,4 +215,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .side-panel-inner {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+}
+
+/* * Ensure the Mapbox container itself is absolutely positioned 
+ * to fill its parent (.app-root) entirely.
+ */
+.map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+html, 
+body, 
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a; /* Matches your map theme */
 }
