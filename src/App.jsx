@@ -16,6 +16,7 @@ import { NotificationProvider } from './hooks/useNotification';
 import { ThemeProvider } from './hooks/useTheme';
 import { TimeFormatProvider } from './hooks/useTimeFormat';
 import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from './config';
+import { getMapPadding } from './utils/getMapPadding';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -128,12 +129,8 @@ function AppContent() {
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
       10,
     );
-    map.fitBounds([sw, ne], {
-      padding: isMobile
-        ? { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: panelVisibleH + LAYOUT.mapPadding.default, left: LAYOUT.mapPadding.default }
-        : { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: LAYOUT.mapPadding.default, left: LAYOUT.panelWidth + LAYOUT.mapPadding.default },
-      duration: TRANSITIONS.flyToDuration,
-    });
+    const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
+    map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
 
   }, [coords, mapRef, overlayRadius]);
 
@@ -182,12 +179,8 @@ function AppContent() {
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
       10,
     );
-    map.fitBounds([sw, ne], {
-      padding: isMobile
-        ? { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: panelVisibleH + LAYOUT.mapPadding.default, left: LAYOUT.mapPadding.default }
-        : { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: LAYOUT.mapPadding.default, left: LAYOUT.panelWidth + LAYOUT.mapPadding.default },
-      duration: TRANSITIONS.flyToDuration,
-    });
+    const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
+    map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
   }, [coords, mapRef]);
 
   const handleDateChange = useCallback((y, m, d) => {

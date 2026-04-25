@@ -1,21 +1,12 @@
 /**
- * @file Mapbox GL map component with sun/moon overlay layers.
+ * Manage Mapbox overlay sources/layers and push GeoJSON data.
  *
- * The map instance is created once and stored in a ref.  All subsequent
- * updates (style switches, overlay data, marker position) happen
- * imperatively through the Mapbox API to avoid costly re-mounts.
- *
- * @module components/MapView
+ * This hook centralizes the imperative Mapbox source/layer registration and
+ * the data `setData` calls so that `MapView.jsx` can remain focused on
+ * map initialization and event wiring.
  */
-
 import { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
-import {
-  MAPBOX_TOKEN, DEFAULT_ZOOM, MAP_STYLES,
-  MAP_LAYER_STYLES as LS, MARKER_COLOR, LABELS,
-} from '../config';
-import { useNotification } from '../hooks/notificationContext';
-import useMapOverlays from '../hooks/useMapOverlays';
+import { OVERLAY_RADIUS, MAP_LAYER_STYLES as LS } from '../config';
 import {
   sunArcGeoJSON,
   sunLinesGeoJSON,
@@ -24,8 +15,6 @@ import {
   moonPointGeoJSON,
   headingLineGeoJSON,
 } from '../utils/geoJson';
-
-mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
@@ -38,166 +27,11 @@ const SOURCES = [
   'heading-line',
 ];
 
-/**
- * Interactive map view with celestial overlays.
- *
- * @param {Object} props
- * @param {{ lat: number, lng: number }} props.coords - Current map center.
- * @param {string} props.mapStyle - Active style key ('dark' | 'light' | 'satellite').
- * @param {Array}  props.sunTrajectory  - Sun arc trajectory points.
- * @param {Array}  props.moonTrajectory - Moon arc trajectory points.
- * @param {Object} props.sunData  - Current sun calculation results.
- * @param {Object} props.moonData - Current moon calculation results.
- * @param {Function} props.onMapClick - Callback when the map is clicked.
- * @param {React.MutableRefObject} props.mapRef - Shared ref for the Mapbox instance.
- */
-export default function MapView({
-  coords,
-  mapStyle,
-  sunTrajectory,
-  moonTrajectory,
-  sunData,
-  moonData,
-  overlayRadius,
-  heading,
-  onMapClick,
-  mapRef,
-  onUserInteraction,
-}) {
-  const containerRef = useRef(null);
-  const markerRef = useRef(null);
-  const { notify } = useNotification();
-
-  // Overlay management delegated to hook (registers sources/layers and
-  // pushes updates on style.load and when data changes).
-  useMapOverlays(mapRef, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading });
-
-  // Stable ref for the optional onUserInteraction callback so listeners
-  // don't need re-registering when the prop changes.
-  const onUserInteractionRef = useRef(onUserInteraction);
-  useEffect(() => { onUserInteractionRef.current = onUserInteraction; }, [onUserInteraction]);
-
-  // Track which Mapbox style URL is currently applied so the switch-style
-  // effect can skip the initial no-op.
-  const appliedStyleRef = useRef(MAP_STYLES[mapStyle] || MAP_STYLES.dark);
-
-  /* ---- Initialise map ---- */
-  useEffect(() => {
-    let map;
-    try {
-      map = new mapboxgl.Map({
-        container: containerRef.current,
-        style: appliedStyleRef.current,
-        center: [coords.lng, coords.lat],
-        zoom: DEFAULT_ZOOM,
-        attributionControl: false,
-        zoomControl: false,
-        projection: 'mercator', // Force a flat 2D projection
-        pitchWithRotate: false,  // Disable tilting via rotation
-        dragRotate: false,       // Disable right-click/Ctrl + drag rotation
-        touchZoomRotate: true,   // Enable two-finger rotation on touch
-        maxPitch: 0,             // Prevent any pitch (tilt)
-        minPitch: 0              // Ensure the map stays strictly flat
-      });
-    } catch {
-      notify(LABELS.mapLoadFailed, 'error');
-      return;
-    }
-
-    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
-
-    mapRef.current = map;
-
-    map.on('style.load', () => {
-      addSourcesAndLayers(map);
-      pushOverlayData(map, overlayDataRef.current);
-    });
-
-    map.on('click', (e) => {
-      onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-    });
-
-    // Consider genuine user-initiated movements (drag/wheel) as user
-    // interaction. Programmatic camera moves (flyTo / fitBounds) do not
-    // include an originalEvent on the Mapbox event, so we check for it.
-    const emitInteraction = (ev) => {
-      if (!ev || !ev.originalEvent) return; // ignore programmatic moves
-      onUserInteractionRef.current?.();
-    };
-    map.on('movestart', emitInteraction);
-    map.on('dragstart', emitInteraction);
-    const container = containerRef.current;
-    const wheelHandler = () => { onUserInteractionRef.current?.(); };
-    if (container) container.addEventListener('wheel', wheelHandler, { passive: true });
-
-    map.on('error', (e) => {
-      // Suppress tile-level 404s (expected), surface real errors.
-      if (e?.error?.status !== 404) {
-        console.error('[MapView]', e.error?.message || e);
-      }
-    });
-
-    markerRef.current = new mapboxgl.Marker({ color: MARKER_COLOR })
-      .setLngLat([coords.lng, coords.lat])
-      .addTo(map);
-
-    return () => {
-      map.off('movestart', emitInteraction);
-      map.off('dragstart', emitInteraction);
-      if (container) container.removeEventListener('wheel', wheelHandler);
-      map.remove();
-      mapRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapRef]);
-
-  /* ---- Update marker on coord change ---- */
-  useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setLngLat([coords.lng, coords.lat]);
-    }
-  }, [coords]);
-
-  /* ---- Switch style ---- */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const newStyle = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
-    // Skip when the style URL hasn't actually changed (avoids a redundant
-    // reload on initial mount that wipes the sources just added by the first
-    // style.load).
-    if (appliedStyleRef.current === newStyle) return;
-    appliedStyleRef.current = newStyle;
-    map.setStyle(newStyle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapStyle]);
-
-  /* ---- Overlay updates are handled by useMapOverlays() ---- */
-
-  return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-full" />
-  );
-}
-
-/**
- * Safely set GeoJSON data on a map source if it exists.
- *
- * @param {mapboxgl.Map} map - The Mapbox instance.
- * @param {string} id        - Source ID.
- * @param {Object} data      - GeoJSON FeatureCollection.
- */
 function setSourceData(map, id, data) {
   const src = map.getSource(id);
   if (src) src.setData(data);
 }
 
-/**
- * Push the latest celestial overlay data to all map sources.
- *
- * @param {mapboxgl.Map} map - The Mapbox instance.
- * @param {Object} payload   - Contains coords, sunTrajectory, moonTrajectory, sunData, moonData.
- */
 function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius = OVERLAY_RADIUS, heading }) {
   if (!coords) return;
   const { lat, lng } = coords;
@@ -210,14 +44,6 @@ function pushOverlayData(map, { coords, sunTrajectory, moonTrajectory, sunData, 
   setSourceData(map, 'heading-line', heading != null ? headingLineGeoJSON(heading, lat, lng, r) : EMPTY_FC);
 }
 
-/**
- * Register all GeoJSON sources and styled layers on the map.
- *
- * Called on every `style.load` event (initial + after `setStyle` calls)
- * because Mapbox discards custom sources/layers when the base style reloads.
- *
- * @param {mapboxgl.Map} map - The Mapbox instance.
- */
 function addSourcesAndLayers(map) {
   for (const id of SOURCES) {
     if (!map.getSource(id)) {
@@ -338,4 +164,43 @@ function addSourcesAndLayers(map) {
     filter: ['==', ['get', 'kind'], 'cross'],
     paint: { 'line-color': '#ff0000', 'line-width': 1 },
   });
+}
+
+/**
+ * Hook: attach overlay management to a Mapbox `mapRef`.
+ *
+ * @param {React.MutableRefObject} mapRef - ref containing the Mapbox instance
+ * @param {Object} overlayData - current overlay payload (coords, trajectories, etc.)
+ */
+export default function useMapOverlays(mapRef, overlayData) {
+  const overlayDataRef = useRef(overlayData);
+  overlayDataRef.current = overlayData;
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const onStyleLoad = () => {
+      addSourcesAndLayers(map);
+      pushOverlayData(map, overlayDataRef.current);
+    };
+
+    map.on('style.load', onStyleLoad);
+    if (map.isStyleLoaded && map.isStyleLoaded()) {
+      // style already loaded, ensure sources/layers exist
+      addSourcesAndLayers(map);
+      pushOverlayData(map, overlayDataRef.current);
+    }
+
+    return () => {
+      map.off('style.load', onStyleLoad);
+    };
+  }, [mapRef]);
+
+  // Push updates when overlayData changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    pushOverlayData(map, overlayData);
+  }, [overlayData, mapRef]);
 }
