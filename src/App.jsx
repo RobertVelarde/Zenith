@@ -13,7 +13,7 @@ import MapView from './components/MapView';
 import SidePanel from './components/SidePanel';
 import NotificationToast from './components/NotificationToast';
 import { NotificationProvider } from './hooks/useNotification';
-import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH } from './config';
+import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from './config';
 import { useSolarData } from './hooks/useSolarData';
 import { useLocationMeta } from './hooks/useLocationMeta';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -120,7 +120,7 @@ function AppContent() {
     const latCos = Math.cos((c.lat * Math.PI) / 180);
     const sw = [c.lng - r / latCos, c.lat - r];
     const ne = [c.lng + r / latCos, c.lat + r];
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < LAYOUT.mobileBreakpoint;
     // Read the full visible panel height (bar-only when peeked, full when open).
     const panelVisibleH = parseInt(
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
@@ -128,8 +128,8 @@ function AppContent() {
     );
     map.fitBounds([sw, ne], {
       padding: isMobile
-        ? { top: 24, right: 24, bottom: panelVisibleH + 24, left: 24 }
-        : { top: 24, right: 24, bottom: 24, left: 360 + 24 },
+        ? { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: panelVisibleH + LAYOUT.mapPadding.default, left: LAYOUT.mapPadding.default }
+        : { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: LAYOUT.mapPadding.default, left: LAYOUT.panelWidth + LAYOUT.mapPadding.default },
       duration: TRANSITIONS.flyToDuration,
     });
 
@@ -175,15 +175,15 @@ function AppContent() {
     const latCos = Math.cos((coords.lat * Math.PI) / 180);
     const sw = [coords.lng - r / latCos, coords.lat - r];
     const ne = [coords.lng + r / latCos, coords.lat + r];
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < LAYOUT.mobileBreakpoint;
     const panelVisibleH = parseInt(
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
       10,
     );
     map.fitBounds([sw, ne], {
       padding: isMobile
-        ? { top: 24, right: 24, bottom: panelVisibleH + 24, left: 24 }
-        : { top: 24, right: 24, bottom: 24, left: 340 + 24 },
+        ? { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: panelVisibleH + LAYOUT.mapPadding.default, left: LAYOUT.mapPadding.default }
+        : { top: LAYOUT.mapPadding.default, right: LAYOUT.mapPadding.default, bottom: LAYOUT.mapPadding.default, left: LAYOUT.panelWidth + LAYOUT.mapPadding.default },
       duration: TRANSITIONS.flyToDuration,
     });
   }, [coords, mapRef]);

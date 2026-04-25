@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useBottomSheet } from '../hooks/useBottomSheet';
+import { LAYOUT } from '../config';
 import PanelHeader from './PanelHeader';
 import PinnedSection from './PinnedSection';
 import PanelScrollBody from './PanelScrollBody';
@@ -26,7 +27,7 @@ export default function SidePanel({
     window.addEventListener('resize', u); window.addEventListener('orientationchange', u);
     return () => { window.removeEventListener('resize', u); window.removeEventListener('orientationchange', u); };
   }, []);
-  const isMobile = vp.vw < 768;
+  const isMobile = vp.vw < LAYOUT.mobileBreakpoint;
   const headerRef = useRef(null), pinnedRef = useRef(null), scrollBodyRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [pinnedHeight, setPinnedHeight] = useState(0);
@@ -94,7 +95,7 @@ export default function SidePanel({
     <div
       ref={panelRef}
       className={`fixed z-30 transition-transform duration-300 ease-out
-        md:top-0 md:left-0 md:h-full md:w-[360px]
+        md:top-0 md:left-0 md:h-full md:w-[var(--panel-width)]
         bottom-0 left-0 right-0 md:right-auto h-[100dvh] md:h-full
         touch-pan-y md:touch-auto md:${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       style={panelStyle}

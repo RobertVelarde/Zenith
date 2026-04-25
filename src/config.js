@@ -134,6 +134,24 @@ export const ZENITH = {
 };
 
 // =============================================================================
+// Layout Constants
+// =============================================================================
+
+/**
+ * Panel and breakpoint dimensions — single source of truth for all layout
+ * arithmetic in App.jsx, SidePanel.jsx, and useBottomSheet.js.
+ *
+ * Keep `--panel-width` in src/index.css :root in sync with `panelWidth`.
+ */
+export const LAYOUT = {
+  panelWidth:       340,  // px — desktop side panel rendered width
+  mobileBreakpoint: 768,  // px — Tailwind `md:` boundary
+  mapPadding: {
+    default:     24,      // px — standard map edge padding
+  },
+};
+
+// =============================================================================
 // API Configuration
 // =============================================================================
 export const API = {

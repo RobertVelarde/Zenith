@@ -22,6 +22,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { LAYOUT } from '../config';
 
 /**
  * Returns the index of the snap position nearest the momentum-projected
@@ -48,7 +49,7 @@ function snapToNearest(projected, snaps) {
 const MOMENTUM_PROJECTION_MS = 150;
 
 export function useBottomSheet({ snapPositions, isMobile, pinnedRef, headerRef, scrollBodyRef }) {
-  const [stage, setStage]               = useState(() => window.innerWidth < 768 ? 1 : 0);
+  const [stage, setStage]               = useState(() => window.innerWidth < LAYOUT.mobileBreakpoint ? 1 : 0);
   const [liveTransform, setLiveTransform] = useState(null);
 
   const dragRef       = useRef(null);
@@ -124,7 +125,7 @@ export function useBottomSheet({ snapPositions, isMobile, pinnedRef, headerRef, 
     let touchStartY = 0, touchStartTime = 0, pinnedActive = false;
 
     const handleTouchStart = (e) => {
-      if (window.innerWidth >= 768) return;
+      if (window.innerWidth >= LAYOUT.mobileBreakpoint) return;
       if (e.target.closest('input')) return; // let date/range inputs work natively
       touchStartY    = e.touches[0].clientY;
       touchStartTime = Date.now();
@@ -171,7 +172,7 @@ export function useBottomSheet({ snapPositions, isMobile, pinnedRef, headerRef, 
   // scrolling (including past the bottom) is unaffected.
 
   const onScrollBodyTouchStart = useCallback((e) => {
-    if (window.innerWidth >= 768) return;
+    if (window.innerWidth >= LAYOUT.mobileBreakpoint) return;
     scrollDragRef.current = { startY: e.touches[0].clientY, startTime: Date.now() };
   }, []);
 
