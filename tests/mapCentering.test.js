@@ -37,7 +37,7 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 /** Width (px) of the left-docked panel on desktop/tablet. */
-const DESKTOP_PANEL_W = 340;
+const DESKTOP_PANEL_W = 360;
 
 /** Edge margin applied to all four sides of the fitBounds padding. */
 const MARGIN = 24;

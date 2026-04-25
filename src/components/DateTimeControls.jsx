@@ -201,45 +201,6 @@ export default function DateTimeControls({
 
   return (
     <div className="space-y-3">
-      {/* Date picker */}
-      <div>
-        <label className={`text-[10px] uppercase tracking-wider mb-1 block ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.dateLabel}</label>
-        <input
-          type="date"
-          value={dateStr}
-          onChange={handleDateInput}
-          className={`w-full max-w-full appearance-none rounded-lg px-3 py-1.5 text-sm outline-none
-            ${isLight
-              ? 'bg-black/5 border border-black/10 text-slate-900 focus:border-amber-500/70'
-              : 'bg-white/5 border border-white/10 text-white focus:border-amber-500/50'}`}
-        />
-      </div>
-
-      {/* Yearly slider */}
-      <div>
-        <div className="flex justify-between items-center mb-1">
-          <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.yearlyLabel}</label>
-          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{LABELS.dayPrefix} {doy}</span>
-        </div>
-        <div className="relative">
-          <div
-            className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[14px] rounded-full pointer-events-none"
-            style={{ background: yearGradient }}
-          />
-          <input
-            type="range"
-            min={1}
-            max={daysInYear}
-            value={doy}
-            onChange={handleDoySlider}
-            className="w-full year-slider-over-gradient"
-          />
-        </div>
-        <div className={`flex justify-between text-[9px] mt-0.5 px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
-          {monthLabels.map((m) => <span key={m}>{m}</span>)}
-        </div>
-      </div>
-
       {/* Time slider with day/night gradient */}
       <div>
         <div className="flex justify-between items-center mb-1">
@@ -266,6 +227,31 @@ export default function DateTimeControls({
             ? (<><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span></>)
             : (<><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></>)
           }
+        </div>
+      </div>
+
+      {/* Yearly slider */}
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>{LABELS.yearlyLabel}</label>
+          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{LABELS.dayPrefix} {doy}</span>
+        </div>
+        <div className="relative">
+          <div
+            className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[14px] rounded-full pointer-events-none"
+            style={{ background: yearGradient }}
+          />
+          <input
+            type="range"
+            min={1}
+            max={daysInYear}
+            value={doy}
+            onChange={handleDoySlider}
+            className="w-full year-slider-over-gradient"
+          />
+        </div>
+        <div className={`flex justify-between text-[9px] mt-0.5 px-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
+          {monthLabels.map((m) => <span key={m}>{m}</span>)}
         </div>
       </div>
     </div>
