@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { LABELS } from '../config';
+import { LABELS } from '../../config';
 import { useTheme } from '../hooks/useTheme';
 
 export default function ExternalLinks({ coords }) {

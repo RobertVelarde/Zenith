@@ -17,14 +17,14 @@
  */
 
 import PinnedSection from './PinnedSection';
-import DateTimeControls from './DateTimeControls';
-import SolarInfo from './SolarInfo';
-import LunarInfo from './LunarInfo';
-import AdvancedPanel from './AdvancedPanel';
-import { LABELS } from '../config';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
-import { useAppState, useAppDispatch } from '../app/AppContext';
+import DateTimeControls from '../datetime/DateTimeControls';
+import SolarInfo from '../solar/SolarInfo';
+import LunarInfo from '../lunar/LunarInfo';
+import AdvancedPanel from '../solar/AdvancedPanel';
+import { LABELS } from '../../config';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../../app/AppContext';
 
 export default function PanelScrollBody({
   // Ref + gesture handlers (from useBottomSheet via SidePanel)
@@ -52,8 +52,8 @@ export default function PanelScrollBody({
       ref={scrollBodyRef}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-3 space-y-4 [scrollbar-gutter:stable]
-                  touch-pan-y md:touch-auto overscroll-none ${isLight ? 'light-panel' : ''}`}
+      className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 py-0 space-y-4 [scrollbar-gutter:stable]
+                  touch-pan-y md:touch-auto overscroll-none ${isLight ? 'light-panel' : ''} border-b border-t ${borderColor}`}
       style={{
         ...(scrollBodyMaxH !== null ? { maxHeight: scrollBodyMaxH } : {}),
         ...(isMobile && stage < 2 ? { display: 'none' } : {}),
@@ -63,8 +63,7 @@ export default function PanelScrollBody({
       }}
     >
       {/* Pinned section duplicate — always visible in the scroll body */}
-
-      <div className={`pb-3 border-b ${borderColor}`}>
+      <div className={`pb-3`}>
         <PinnedSection
           onScrollToSolar={onScrollToSolar}
           onScrollToLunar={onScrollToLunar}

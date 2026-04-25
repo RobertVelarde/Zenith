@@ -11,7 +11,7 @@ import {
   LABELS,
   OVERLAY_RADIUS,
 } from '../../config';
-import { useNotification } from '../../hooks/notificationContext';
+import { useNotification } from '../../shared/hooks/useNotification';
 import useMapOverlays from './useMapOverlays';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -28,12 +28,14 @@ export default function MapView({
   onMapClick,
   mapRef,
   onUserInteraction,
+  onMapIdle, // callback when the map first becomes idle
+  onOverlaysReady, // callback when overlays have been initially pushed
 }) {
   const containerRef = useRef(null);
   const markerRef = useRef(null);
   const { notify } = useNotification();
 
-  useMapOverlays(mapRef, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading });
+  useMapOverlays(mapRef, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading }, { onInitialReady: onOverlaysReady });
 
   const onUserInteractionRef = useRef(onUserInteraction);
   useEffect(() => { onUserInteractionRef.current = onUserInteraction; }, [onUserInteraction]);
@@ -69,6 +71,11 @@ export default function MapView({
 
     map.on('style.load', () => {
       // Hook handles sources/layers and initial data push
+    });
+
+    // Fire once when the map finishes its initial load/idle cycle.
+    map.once('idle', () => {
+      onMapIdle?.();
     });
 
     map.on('click', (e) => {

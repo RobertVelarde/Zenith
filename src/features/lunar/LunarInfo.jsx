@@ -4,14 +4,14 @@
  * @module components/LunarInfo
  */
 
-import { formatTimeCrossDay } from '../shared/utils/timezone';
-import { getMoonPhaseName } from '../shared/utils/sunMoonCalc';
-import { LABELS } from '../config';
-import DataRow from './DataRow';
+import { formatTimeCrossDay } from '../../shared/utils/timezone';
+import { getMoonPhaseName } from '../../shared/utils/sunMoonCalc';
+import { LABELS } from '../../config';
+import DataRow from '../../shared/components/DataRow';
 import MoonPhaseIcon from './MoonPhaseIcon';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
-import { useAppState } from '../app/AppContext';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
+import { useAppState } from '../../app/AppContext';
 
 /**
  * Render lunar data for the current date/location.

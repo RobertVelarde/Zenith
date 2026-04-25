@@ -16,12 +16,12 @@
 
 import { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { LABELS, API, ZENITH } from '../config';
-import { useNotification } from '../hooks/notificationContext';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
-import { useAppState, useAppDispatch } from '../app/AppContext';
-import useGeoSearch from '../hooks/useGeoSearch';
+import { LABELS, API, ZENITH } from '../../config';
+import { useNotification } from '../../shared/hooks/useNotification';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../../app/AppContext';
+import useGeoSearch from '../search/hooks/useGeoSearch';
 
 export default forwardRef(function PanelHeader({
   // Stage control (grab handle)
@@ -110,7 +110,7 @@ export default forwardRef(function PanelHeader({
 
   const mobilePick = (feat) => {
     const p = pickResult(feat);
-    if (p) onCoordsChange(p);
+    if (p) handleCoordsChange(p);
     setSearchActive(false);
     setMobileResultsOpen(false);
   };
@@ -169,16 +169,17 @@ export default forwardRef(function PanelHeader({
 
         <div className="flex items-center gap-1.5 px-2 py-2">
 
-          {/* 1. Zenith title button */}
+          {/* Zenith title button */}
           <button
             onClick={onZenithClick}
             onPointerDown={onZenithPointerDown}
             onPointerUp={onZenithPointerUp}
             onPointerLeave={onZenithPointerUp}
             onPointerCancel={onZenithPointerUp}
-            className={`shrink-0 h-9 px-2.5 text-lg font-semibold tracking-wide flex items-center rounded-xl transition-all duration-200 ${
-              zenithGold ? goldStyle : (zenithBlue || titleFlash) ? cyanFlash : textPrimary
-            }`}
+            className={`shrink-0 h-9 px-2.5 text-lg font-bold tracking-tight flex items-center rounded-xl transition-all duration-200 
+              
+              ${zenithGold ? goldStyle : (zenithBlue || titleFlash) ? cyanFlash : textPrimary}
+            `}
           >
             {LABELS.appTitle}
           </button>
@@ -254,7 +255,7 @@ export default forwardRef(function PanelHeader({
                     ref={mobileSearchInput}
                     type="text"
                     value={mobileQuery}
-                    onChange={(e) => { setMobileQuery(e.target.value); mobileSearch(e.target.value); }}
+                    onChange={(e) => { setMobileQuery(e.target.value); }}
                     onBlur={() => { setTimeout(() => setSearchActive(false), 150); }}
                     placeholder={LABELS.searchPlaceholder}
                     className={`bg-transparent text-base outline-none w-full h-full
@@ -262,7 +263,7 @@ export default forwardRef(function PanelHeader({
                   />
                   {mobileQuery && (
                     <button
-                      onMouseDown={(e) => { e.preventDefault(); setMobileQuery(''); setMobileResults([]); }}
+                      onMouseDown={(e) => { e.preventDefault(); setMobileQuery(''); setMobileResultsOpen(false); }}
                       className={`text-xs shrink-0 ${isLight ? 'text-slate-400' : 'text-gray-500'}`}
                     >
                       ✕
@@ -284,7 +285,7 @@ export default forwardRef(function PanelHeader({
                       );
                     }}
                     style={coordsFlash ? { background: '#22d3ee', color: '#000', boxShadow: '0 0 12px 2px rgba(34,211,238,0.45)' } : undefined}
-                    className={`flex-1 h-full px-2.5 rounded-xl ${glassClass} text-xs font-mono text-left truncate flex items-center transition-all duration-200 ${textPrimary}`}
+                    className={`flex-1 h-full px-2.5 rounded-xl ${glassClass} text-xs font-mono tracking-tight text-left truncate flex items-center transition-all duration-200 ${textPrimary}`}
                   >
                     {coordsFlash
                       ? 'Coordinates copied!'

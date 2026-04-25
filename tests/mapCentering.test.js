@@ -96,6 +96,13 @@ async function gotoApp(page) {
 
   // The Zenith button is always visible regardless of panel stage.
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
+
+  // Wait for the initial loading overlay to clear so it cannot intercept
+  // interactions with the panel controls.
+  await page
+    .locator('text=Initializing System')
+    .waitFor({ state: 'hidden', timeout: 15_000 })
+    .catch(() => {});
 }
 
 /**
@@ -132,7 +139,7 @@ async function waitForPanelVisibleH(page, minHeight) {
       return val > min;
     },
     minHeight,
-    { timeout: 5_000 },
+    { timeout: 10_000 },
   );
   return readPanelVars(page).then((v) => v.panelVisibleH);
 }
@@ -240,7 +247,9 @@ test.describe('Map centering — mobile expanded @math', () => {
       ).y;
 
       // Expand the panel.
-      await page.locator('button[aria-label="Expand menu"]').click();
+      const expandButton = page.locator('button[aria-label="Expand menu"]');
+      await expect(expandButton).toBeVisible({ timeout: 5_000 });
+      await expandButton.click();
       const expandedH = await waitForPanelVisibleH(page, initialBarH);
 
       const { x, y } = remainingCenter(

@@ -8,10 +8,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getTimezone } from '../shared/utils/timezone';
-import { getElevation } from '../shared/utils/elevation';
+import { getTimezone } from '../../shared/utils/timezone';
+import { getElevation } from '../../shared/utils/elevation';
 import { useNotification } from './notificationContext';
-import { LABELS } from '../config';
+import { LABELS } from '../../config';
 
 /**
  * Fetch timezone and elevation for a coordinate pair.

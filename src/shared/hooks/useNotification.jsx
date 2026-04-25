@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { NotificationContext } from './notificationContext';
+export { useNotification } from './notificationContext';
 
 let nextId = 1;
 const AUTO_DISMISS_MS = 5000;

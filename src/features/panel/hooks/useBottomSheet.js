@@ -22,7 +22,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { LAYOUT } from '../config';
+import { LAYOUT } from '../../../config';
 
 /**
  * Returns the index of the snap position nearest the momentum-projected

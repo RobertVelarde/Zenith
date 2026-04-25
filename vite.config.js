@@ -40,6 +40,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     base: process.env.VITE_BASE_PATH || '/',
+    resolve: {
+      alias: {
+        '@features': path.resolve(root, 'src/features'),
+        '@shared': path.resolve(root, 'src/shared'),
+        '@config': path.resolve(root, 'src/config'),
+      },
+    },
     define: {
       'import.meta.env.VITE_MAPBOX_TOKEN': JSON.stringify(token),
       'process.env.MAPBOX_TOKEN': JSON.stringify(process.env.MAPBOX_TOKEN || token),

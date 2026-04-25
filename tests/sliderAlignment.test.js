@@ -76,6 +76,13 @@ async function gotoApp(page) {
 
   // The Zenith title button is always visible (header is never hidden).
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15_000 });
+
+  // Wait for the initial loading overlay to fully dismiss so it cannot
+  // intercept clicks in slower mobile Safari runs.
+  await page
+    .locator('text=Initializing System')
+    .waitFor({ state: 'hidden', timeout: 15_000 })
+    .catch(() => {});
 }
 
 /**
@@ -88,7 +95,9 @@ async function gotoApp(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function expandPanel(page) {
-  await page.locator('button[aria-label="Expand menu"]').click();
+  const expandButton = page.locator('button[aria-label="Expand menu"]');
+  await expect(expandButton).toBeVisible({ timeout: 5_000 });
+  await expandButton.click();
   // Wait for the scroll body to slide into view (300 ms CSS transition).
   await page
     .locator('input.year-slider-over-gradient, input.time-slider-over-gradient')

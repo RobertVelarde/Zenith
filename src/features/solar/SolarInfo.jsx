@@ -4,12 +4,12 @@
  * @module components/SolarInfo
  */
 
-import { formatDuration } from '../shared/utils/timezone';
-import { LABELS } from '../config';
-import DataRow from './DataRow';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
-import { useAppState } from '../app/AppContext';
+import { formatDuration } from '../../shared/utils/timezone';
+import { LABELS } from '../../config';
+import DataRow from '../../shared/components/DataRow';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
+import { useAppState } from '../../app/AppContext';
 
 /**
  * Render a summary of solar events (sunrise, sunset, golden hours, etc.)

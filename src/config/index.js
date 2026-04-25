@@ -144,7 +144,7 @@ export const ZENITH = {
  * Keep `--panel-width` in src/index.css :root in sync with `panelWidth`.
  */
 export const LAYOUT = {
-  panelWidth:       340,  // px — desktop side panel rendered width
+  panelWidth:       360,  // px — desktop side panel rendered width
   mobileBreakpoint: 768,  // px — Tailwind `md:` boundary
   mapPadding: {
     default:     24,      // px — standard map edge padding

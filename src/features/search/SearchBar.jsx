@@ -8,8 +8,8 @@
  */
 
 import { useRef, useEffect } from 'react';
-import { API, LABELS } from '../config';
-import useGeoSearch from '../hooks/useGeoSearch';
+import { API, LABELS } from '../../config';
+import useGeoSearch from './hooks/useGeoSearch';
 
 export default function SearchBar({ onSelect, isLight }) {
   const wrapRef = useRef(null);

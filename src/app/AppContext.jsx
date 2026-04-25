@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import MapView from '../features/map/MapView';
-import SidePanel from '../components/SidePanel';
-import NotificationToast from '../components/NotificationToast';
-import { ThemeProvider } from '../hooks/useTheme';
-import { TimeFormatProvider } from '../hooks/useTimeFormat';
-import { usePersistentState } from '../hooks/usePersistentState';
-import { useDebounce } from '../hooks/useDebounce';
-import { useLocationMeta } from '../hooks/useLocationMeta';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { useSolarData } from '../hooks/useSolarData';
-import { useCompassHeading } from '../hooks/useCompassHeading';
+import SidePanel from '../features/panel/SidePanel';
+import NotificationToast from '../shared/components/NotificationToast';
+import LoadingScreen from '../shared/components/LoadingScreen';
+import { ThemeProvider } from '../shared/hooks/useTheme';
+import { TimeFormatProvider } from '../shared/hooks/useTimeFormat';
+import { usePersistentState } from '../shared/hooks/usePersistentState';
+import { useDebounce } from '../shared/hooks/useDebounce';
+import { useLocationMeta } from '../shared/hooks/useLocationMeta';
+import { useGeolocation } from '../shared/hooks/useGeolocation';
+import { useSolarData } from '../shared/hooks/useSolarData';
+import { useCompassHeading } from '../shared/hooks/useCompassHeading';
 import getMapPadding from '../shared/utils/getMapPadding';
 import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, LAYOUT, API } from '../config';
 
@@ -63,9 +64,32 @@ export function AppProvider({ children }) {
 
   const { heading, requestPermission } = useCompassHeading();
 
+  // Loading / readiness state for the initial splash screen.
+  const [savedLoaded, setSavedLoaded] = useState(false);
+  const [mapIdle, setMapIdle] = useState(false);
+  const [overlaysReady, setOverlaysReady] = useState(false);
+  const [solarLoaded, setSolarLoaded] = useState(false);
+
+  useEffect(() => {
+    // usePersistentState returns `savedState` synchronously; mark as loaded
+    // on first paint so the splash can reflect it.
+    setSavedLoaded(true);
+  }, []);
+
   useEffect(() => {
     persist({ coords, overlayZoom, mapStyle, use24h, wasGeolocated: isGeolocatedRef.current });
   }, [coords, overlayZoom, mapStyle, use24h, persist]);
+
+  // Consider solar/moon data "loaded" when a timezone has been found or a
+  // short timeout elapsed (so the splash doesn't hang indefinitely).
+  useEffect(() => {
+    if (timezone !== null) {
+      setSolarLoaded(true);
+      return;
+    }
+    const t = setTimeout(() => setSolarLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [timezone, sunData, moonData]);
 
   const handleMapClick = useCallback((c) => {
     setCoords(c);
@@ -163,6 +187,10 @@ export function AppProvider({ children }) {
         <ThemeProvider mapStyle={mapStyle} onStyleChange={setMapStyle}>
           <TimeFormatProvider timezone={timezone} use24h={use24h} setUse24h={setUse24h}>
             <div className="app-root relative w-screen overflow-hidden">
+              <LoadingScreen
+                visible={!(savedLoaded && !!coords && mapIdle && overlaysReady && solarLoaded)}
+                statuses={{ savedStateLoaded: savedLoaded, coordsSet: !!coords, mapIdle, overlaysReady, solarLoaded }}
+              />
               <MapView
                 coords={coords}
                 mapStyle={mapStyle}
@@ -175,6 +203,8 @@ export function AppProvider({ children }) {
                 onMapClick={handleMapClick}
                 mapRef={mapRef}
                 onUserInteraction={handleUserInteraction}
+                onMapIdle={() => setMapIdle(true)}
+                onOverlaysReady={() => setOverlaysReady(true)}
               />
 
               <SidePanel />

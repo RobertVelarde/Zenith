@@ -11,9 +11,9 @@
 import { useMemo } from 'react';
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
-import { LABELS, TWILIGHT_COLORS, YEARLY_GRADIENT_PALETTE, SLIDER } from '../config';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
+import { LABELS, TWILIGHT_COLORS, YEARLY_GRADIENT_PALETTE, SLIDER } from '../../config';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function mToHHMM(m) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; }

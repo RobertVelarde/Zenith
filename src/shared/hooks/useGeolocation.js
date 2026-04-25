@@ -11,7 +11,7 @@
 
 import { useCallback } from 'react';
 import { useNotification } from './notificationContext';
-import { LABELS } from '../config';
+import { LABELS } from '../../config';
 
 /**
  * Returns a `geolocate({ onSuccess, onError })` function that requests the

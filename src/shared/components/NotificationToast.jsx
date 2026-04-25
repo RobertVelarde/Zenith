@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useNotification } from '../hooks/notificationContext';
+import { useNotification } from '../hooks/useNotification';
 
 const LEVEL_STYLES = {
   info:  {

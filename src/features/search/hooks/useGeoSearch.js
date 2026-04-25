@@ -6,10 +6,10 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useDebounce } from './useDebounce';
-import { useNotification } from './notificationContext';
-import { MAPBOX_TOKEN, API } from '../config';
-import { LABELS } from '../config';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
+import { useNotification } from '../../../shared/hooks/useNotification';
+import { MAPBOX_TOKEN, API } from '../../../config';
+import { LABELS } from '../../../config';
 
 export function useGeoSearch({ debounceMs = API.searchDebounce } = {}) {
   const [query, setQuery] = useState('');

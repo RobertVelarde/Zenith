@@ -12,11 +12,11 @@
  * access to the scroll-body refs.
  */
 
-import MoonPhaseIcon from './MoonPhaseIcon';
-import { OVERLAY_ZOOM, DEFAULT_ZOOM } from '../config';
-import { useTheme } from '../hooks/useTheme';
-import { useTimeFormat } from '../hooks/useTimeFormat';
-import { useAppState, useAppDispatch } from '../app/AppContext';
+import MoonPhaseIcon from '../lunar/MoonPhaseIcon';
+import { OVERLAY_ZOOM, DEFAULT_ZOOM } from '../../config';
+import { useTheme } from '../../shared/hooks/useTheme';
+import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../../app/AppContext';
 
 export default function PinnedSection({ onScrollToSolar, onScrollToLunar }) {
   const { isLight, borderColor } = useTheme();
@@ -96,7 +96,7 @@ export default function PinnedSection({ onScrollToSolar, onScrollToLunar }) {
         />
         <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>
           <span>City</span>
-          <span>Suburb</span>
+          <span>Community</span>
           <span>Neighborhood</span>
           <span>Street</span>
           <span>House</span>

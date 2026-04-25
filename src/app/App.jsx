@@ -3,18 +3,18 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import MapView from '../features/map/MapView';
-import SidePanel from '../components/SidePanel';
-import NotificationToast from '../components/NotificationToast';
-import { NotificationProvider } from '../hooks/useNotification';
-import { ThemeProvider } from '../hooks/useTheme';
-import { TimeFormatProvider } from '../hooks/useTimeFormat';
+import SidePanel from '../features/panel/SidePanel';
+import NotificationToast from '../shared/components/NotificationToast';
+import { NotificationProvider } from '../shared/hooks/useNotification';
+import { ThemeProvider } from '../shared/hooks/useTheme';
+import { TimeFormatProvider } from '../shared/hooks/useTimeFormat';
 import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from '../config';
-import { useSolarData } from '../hooks/useSolarData';
-import { useLocationMeta } from '../hooks/useLocationMeta';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { useDebounce } from '../hooks/useDebounce';
-import { useCompassHeading } from '../hooks/useCompassHeading';
-import { usePersistentState } from '../hooks/usePersistentState';
+import { useSolarData } from '../shared/hooks/useSolarData';
+import { useLocationMeta } from '../shared/hooks/useLocationMeta';
+import { useGeolocation } from '../shared/hooks/useGeolocation';
+import { useDebounce } from '../shared/hooks/useDebounce';
+import { useCompassHeading } from '../shared/hooks/useCompassHeading';
+import { usePersistentState } from '../shared/hooks/usePersistentState';
 import { API } from '../config';
 import AppProvider from './AppContext';
 
@@ -44,10 +44,8 @@ function AppContent() {
   const { timezone, elevation } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
   const { geolocate } = useGeolocation(setCoords);
 
-  const [zenithGold, setZenithGold] = useState(savedState?.wasGeolocated ?? false);
-  const [zenithBlue, setZenithBlue] = useState(
-    !!(savedState && !savedState.wasGeolocated),
-  );
+  const [zenithGold, setZenithGold] = useState(false);
+  const [zenithBlue, setZenithBlue] = useState(savedState !== null); 
   const isGeolocatedRef = useRef(savedState?.wasGeolocated ?? false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(

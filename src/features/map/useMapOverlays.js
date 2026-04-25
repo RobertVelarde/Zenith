@@ -149,23 +149,15 @@ function addSourcesAndLayers(map) {
       'line-opacity': 0.9,
     },
   });
-
-  addIf('debug-bounds-box', {
-    id: 'debug-bounds-box', source: 'debug-bounds', type: 'line',
-    filter: ['==', ['get', 'kind'], 'box'],
-    paint: { 'line-color': '#ff0000', 'line-width': 1 },
-  });
-  addIf('debug-bounds-cross', {
-    id: 'debug-bounds-cross', source: 'debug-bounds', type: 'line',
-    filter: ['==', ['get', 'kind'], 'cross'],
-    paint: { 'line-color': '#ff0000', 'line-width': 1 },
-  });
 }
 
-export default function useMapOverlays(mapRef, overlayData) {
+export default function useMapOverlays(mapRef, overlayData, opts = {}) {
+  const { onInitialReady } = opts;
   const overlayDataRef = useRef(overlayData);
   overlayDataRef.current = overlayData;
+  const initialReadyRef = useRef(false);
 
+  // Run when the actual map instance becomes available (mapRef.current)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -173,22 +165,37 @@ export default function useMapOverlays(mapRef, overlayData) {
     const onStyleLoad = () => {
       addSourcesAndLayers(map);
       pushOverlayData(map, overlayDataRef.current);
+      if (!initialReadyRef.current) {
+        initialReadyRef.current = true;
+        onInitialReady?.();
+      }
     };
 
     map.on('style.load', onStyleLoad);
     if (map.isStyleLoaded && map.isStyleLoaded()) {
       addSourcesAndLayers(map);
       pushOverlayData(map, overlayDataRef.current);
+      if (!initialReadyRef.current) {
+        initialReadyRef.current = true;
+        onInitialReady?.();
+      }
     }
 
     return () => {
       map.off('style.load', onStyleLoad);
     };
-  }, [mapRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapRef.current]);
 
+  // Push fresh overlay data whenever the data changes and the map exists.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     pushOverlayData(map, overlayData);
-  }, [overlayData, mapRef]);
+    if (!initialReadyRef.current) {
+      initialReadyRef.current = true;
+      onInitialReady?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayData, mapRef.current]);
 }

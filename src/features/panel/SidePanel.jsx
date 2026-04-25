@@ -1,11 +1,11 @@
 ﻿import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
-import { useBottomSheet } from '../hooks/useBottomSheet';
-import { LAYOUT } from '../config';
-import { useTheme } from '../hooks/useTheme';
+import { useBottomSheet } from './hooks/useBottomSheet';
+import { LAYOUT } from '../../config';
+import { useTheme } from '../../shared/hooks/useTheme';
 import PanelHeader from './PanelHeader';
 import PinnedSection from './PinnedSection';
 import PanelScrollBody from './PanelScrollBody';
-import { useAppState, useAppDispatch } from '../app/AppContext';
+import { useAppState, useAppDispatch } from '../../app/AppContext';
 
 export default function SidePanel() {
   const { glassClass, borderColor } = useTheme();
@@ -89,7 +89,7 @@ export default function SidePanel() {
         touch-pan-y md:touch-auto md:${panelOpen ? 'translate-x-0' : '-translate-x-full'}`}
       style={panelStyle}
     >
-      <div className={`side-panel-inner h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
+      <div className={`side-panel-inner h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible border-b ${borderColor}`}>
         <PanelHeader
           ref={headerRef} stage={stage} setStage={setStage}
           onDragStart={onDragStart} onDragEnd={onDragEnd} resultsBottomPx={resultsBottomPx}
