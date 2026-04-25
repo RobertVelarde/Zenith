@@ -24,24 +24,33 @@ export default defineConfig({
 
   projects: [
     {
+      // Runs the full suite, including @math tests (pure JS/CSS-var geometry checks).
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      // CSS rendering and WebKit pseudo-element tests only — skip browser-agnostic math.
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      grepInvert: /@math/,
     },
     {
+      // CSS rendering and WebKit pseudo-element tests only — skip browser-agnostic math.
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      grepInvert: /@math/,
     },
     {
+      // Mobile CSS and touch hit-target tests — skip browser-agnostic math.
       name: 'mobile-chrome',
       use: { ...devices['Pixel 5'] },
+      grepInvert: /@math/,
     },
     {
+      // Mobile CSS and touch hit-target tests — skip browser-agnostic math.
       name: 'mobile-safari',
       use: { ...devices['iPhone 12'] },
+      grepInvert: /@math/,
     },
   ],
 

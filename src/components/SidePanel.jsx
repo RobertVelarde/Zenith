@@ -512,7 +512,7 @@ export default function SidePanel({
         style={panelStyle}
       >
 
-        <div className={`h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
+        <div className={`side-panel-inner h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
 
           {/* ── SECTION 1: Header ────────────────────────────────────────────
                Drag handle for the open/close gesture on mobile.

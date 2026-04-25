@@ -195,7 +195,7 @@ function AppContent() {
   }, [setYear, setMonth, setDay]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="app-root relative w-screen overflow-hidden">
       <MapView
         coords={coords}
         mapStyle={mapStyle}

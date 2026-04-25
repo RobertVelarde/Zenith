@@ -285,31 +285,40 @@ test.describe('Screenshot regression', () => {
 
 test.describe('Mobile touch: slider thumb hit-target', () => {
   /**
-   * The input container height must equal --slider-thumb-size so the full
-   * 20×20 px thumb area is tappable on touch devices.
+   * On touch devices (pointer: coarse) the input height is expanded to
+   *   thumbSize + 2 × touchPadding   (= 20 + 24 = 44 px)
+   * so there is adequate vertical tap room above and below the thumb.
+   * On fine-pointer devices the input height equals thumbSize (20 px).
    */
   for (const slider of ['year', 'time']) {
-    test(`${slider} slider input height equals thumb size`, async ({ page }) => {
+    test(`${slider} slider input height equals touch-padded thumb size`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await gotoApp(page);
 
-      const { inputHeight, thumbSize } = await page.evaluate((sel) => {
+      const { inputHeight, expectedHeight } = await page.evaluate((sel) => {
         const input = document.querySelector(sel);
         const rect  = input ? input.getBoundingClientRect() : null;
-        const root  = document.documentElement;
-        const ts    = parseFloat(
-          getComputedStyle(root).getPropertyValue('--slider-thumb-size'),
+        const root  = getComputedStyle(document.documentElement);
+
+        const thumbSize    = parseFloat(root.getPropertyValue('--slider-thumb-size'));
+        const touchPadding = parseFloat(
+          getComputedStyle(input).getPropertyValue('--slider-touch-padding') || '0',
         );
+
+        // Coarse pointer: height = thumbSize + 2 * touchPadding.
+        // Fine pointer:   height = thumbSize.
+        const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+        const expected = isCoarse ? thumbSize + touchPadding * 2 : thumbSize;
+
         return {
-          inputHeight: rect ? rect.height : null,
-          thumbSize: ts,
+          inputHeight:   rect ? rect.height : null,
+          expectedHeight: expected,
         };
       }, `.${slider}-slider-over-gradient`);
 
       expect(inputHeight).not.toBeNull();
-      // Input container height should equal thumbSize (20 px) ± 0.5 px for
-      // sub-pixel rounding.
-      expect(Math.abs(inputHeight - thumbSize)).toBeLessThan(0.5);
+      // Allow ±0.5 px for sub-pixel rendering differences across platforms.
+      expect(Math.abs(inputHeight - expectedHeight)).toBeLessThan(0.5);
     });
   }
 });

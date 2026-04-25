@@ -22,7 +22,10 @@ body {
   overflow: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: #0f172a;
+  /* -webkit-fill-available: legacy iOS Safari height hint (pre-dvh) */
   min-height: -webkit-fill-available;
+  /* Disable iOS rubber-band bounce so the map feels native and fixed */
+  overscroll-behavior: none;
 }
 
 * {
@@ -184,5 +187,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 @media screen and (max-width: 768px) {
   input, select, textarea {
     font-size: 16px !important;
+  }
+}
+
+/*
+ * App root container — full-screen dynamic viewport.
+ *
+ * Two declarations cascade so every browser gets the right value:
+ *   1. height: 100vh  — fallback for iOS Safari < 15.4 and other legacy browsers
+ *      that don't support dvh.  On iOS Safari this equals the *large* viewport
+ *      (address bar hidden), so the layout may be clipped slightly when the bar
+ *      is showing — acceptable as a graceful degradation.
+ *   2. height: 100dvh — modern override: Dynamic Viewport Height tracks the
+ *      *actual* visible area as the browser chrome expands and collapses.  This
+ *      is the fix for the iOS Safari "letterboxing" bug.
+ */
+.app-root {
+  height: 100vh; /* legacy fallback */
+  height: 100dvh;
+}
+
+/*
+ * Mobile bottom-sheet inner panel — safe-area-inset-bottom padding.
+ *
+ * The outer fixed panel intentionally extends to bottom: 0 (the physical screen
+ * edge) so the glass background fills behind the home indicator.  This rule
+ * adds transparent padding inside the flex column so interactive content
+ * (sliders, buttons) stops above the home indicator zone.
+ *
+ * Desktop panels are unaffected: the md: breakpoint takes precedence and the
+ * padding is reset to 0.
+ */
+@media (max-width: 767px) {
+  .side-panel-inner {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
