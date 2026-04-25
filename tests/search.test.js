@@ -30,7 +30,7 @@ test('clicking a search result sets the app coordinates', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('button:has-text("Zenith")', { timeout: 15000 });
   await page
-    .locator('text=Initializing System')
+    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
     .waitFor({ state: 'hidden', timeout: 15_000 })
     .catch(() => {});
 

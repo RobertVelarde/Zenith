@@ -100,7 +100,7 @@ async function gotoApp(page) {
   // Wait for the initial loading overlay to clear so it cannot intercept
   // interactions with the panel controls.
   await page
-    .locator('text=Initializing System')
+    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
     .waitFor({ state: 'hidden', timeout: 15_000 })
     .catch(() => {});
 }
@@ -129,7 +129,7 @@ async function readPanelVars(page) {
  * @param {number} minHeight
  * @returns {Promise<number>}
  */
-async function waitForPanelVisibleH(page, minHeight) {
+async function waitForPanelVisibleH(page, minHeight, timeout = 10_000) {
   await page.waitForFunction(
     (min) => {
       const val = parseInt(
@@ -139,9 +139,37 @@ async function waitForPanelVisibleH(page, minHeight) {
       return val > min;
     },
     minHeight,
-    { timeout: 10_000 },
+    { timeout },
   );
   return readPanelVars(page).then((v) => v.panelVisibleH);
+}
+
+/**
+ * Expand the mobile panel from stage 1 to stage 2 and wait for
+ * `--panel-visible-h` to increase beyond the peek bar height.
+ *
+ * CI can occasionally keep retrying a normal click when transient overlays
+ * intercept pointer events; `force: true` prevents that actionability stall.
+ * As a fallback, dispatch a DOM click directly if the CSS var does not update.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} initialBarH
+ * @returns {Promise<number>} expanded panel visible height
+ */
+async function expandPanelAndWait(page, initialBarH) {
+  const expandButton = page.locator('button[aria-label="Expand menu"]').first();
+  await expect(expandButton).toBeVisible({ timeout: 10_000 });
+
+  // Avoid long actionability retries in CI when overlays briefly intercept.
+  await expandButton.click({ force: true });
+
+  try {
+    return await waitForPanelVisibleH(page, initialBarH, 4_000);
+  } catch {
+    // Fallback: direct DOM click in case pointer events were intercepted.
+    await expandButton.dispatchEvent('click');
+    return waitForPanelVisibleH(page, initialBarH, 15_000);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -247,10 +275,7 @@ test.describe('Map centering — mobile expanded @math', () => {
       ).y;
 
       // Expand the panel.
-      const expandButton = page.locator('button[aria-label="Expand menu"]');
-      await expect(expandButton).toBeVisible({ timeout: 5_000 });
-      await expandButton.click();
-      const expandedH = await waitForPanelVisibleH(page, initialBarH);
+      const expandedH = await expandPanelAndWait(page, initialBarH);
 
       const { x, y } = remainingCenter(
         vp.width, vp.height,

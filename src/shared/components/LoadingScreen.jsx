@@ -56,6 +56,7 @@ export default function LoadingScreen({ visible = true, statuses = {} }) {
 
   return (
     <div
+      data-testid="loading-screen"
       className={`fixed inset-0 z-[120] flex items-center justify-center transition-opacity duration-300 
         ${isActuallyVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}
         /* 1. DARK & TRANSPARENT FULLSCREEN BACKGROUND */

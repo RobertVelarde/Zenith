@@ -80,7 +80,7 @@ async function gotoApp(page) {
   // Wait for the initial loading overlay to fully dismiss so it cannot
   // intercept clicks in slower mobile Safari runs.
   await page
-    .locator('text=Initializing System')
+    .locator('[data-testid="loading-screen"][aria-hidden="false"]')
     .waitFor({ state: 'hidden', timeout: 15_000 })
     .catch(() => {});
 }
