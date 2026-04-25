@@ -5,34 +5,18 @@
  * moonrise/set detection, full-day trajectories) that the rest of the
  * application consumes.
  *
- * @module utils/sunMoonCalc
+ * @module shared/utils/sunMoonCalc
  */
 
 import SunCalc from 'suncalc';
 
-/* ---------- helpers ---------- */
-
-/** Convert radians to degrees. */
 const toDeg = (rad) => rad * (180 / Math.PI);
-
-/** Normalise SunCalc's azimuth (radians, 0 = South) to compass degrees (0 = North). */
 const normAz = (rad) => (toDeg(rad) + 180) % 360;
 
 function safeDate(d) {
   return d && !isNaN(d.getTime()) ? d : null;
 }
 
-/**
- * Check the previous day, then the next day, for a moonrise or moonset
- * field that was absent on `date`.  Returns the found Date and relative
- * day offset, or `{ time: null, day: 0 }` if not found on either.
- *
- * @param {Date}   date  - The reference date.
- * @param {number} lat   - Latitude.
- * @param {number} lng   - Longitude.
- * @param {'rise'|'set'} field - Which field to look up.
- * @returns {{ time: Date|null, day: -1|0|1 }}
- */
 function findCrossDayTime(date, lat, lng, field) {
   const prevDate = new Date(date);
   prevDate.setDate(prevDate.getDate() - 1);
@@ -49,15 +33,6 @@ function findCrossDayTime(date, lat, lng, field) {
   return { time: null, day: 0 };
 }
 
-/**
- * Build an azimuth/altitude trajectory at 5-minute intervals for the full day.
- *
- * @param {Function} getSkyPos - `SunCalc.getPosition` or `SunCalc.getMoonPosition`.
- * @param {number}   lat       - Latitude.
- * @param {number}   lng       - Longitude.
- * @param {Function} makeDate  - Factory `(minuteOfDay) => Date` in the correct timezone.
- * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
- */
 function buildTrajectory(getSkyPos, lat, lng, makeDate) {
   const pts = [];
   for (let m = 0; m < 1440; m += 5) {
@@ -67,21 +42,10 @@ function buildTrajectory(getSkyPos, lat, lng, makeDate) {
   return pts;
 }
 
-/* ---------- Sun ---------- */
-
-/**
- * Compute sun event times, current position, and azimuths at key events.
- *
- * @param {Date}   date - The reference date/time.
- * @param {number} lat  - Latitude in decimal degrees.
- * @param {number} lng  - Longitude in decimal degrees.
- * @returns {{ times: Object, position: { azimuth: number, altitude: number }, eventAzimuths: Object }}
- */
 export function getSunData(date, lat, lng) {
   const times = SunCalc.getTimes(date, lat, lng);
   const pos = SunCalc.getPosition(date, lat, lng);
 
-  // Azimuths at key events
   const eventAzimuths = {};
   for (const [key, time] of Object.entries(times)) {
     const t = safeDate(time);
@@ -98,30 +62,19 @@ export function getSunData(date, lat, lng) {
   };
 }
 
-/* ---------- Moon ---------- */
-
-/**
- * Get moon data with cross-day rise/set detection.
- * When rise or set doesn't occur on the selected day, we check prev/next day
- * and tag the result with `riseDay` / `setDay` (-1 = yesterday, 0 = today, +1 = tomorrow).
- */
 export function getMoonData(date, lat, lng) {
   const pos = SunCalc.getMoonPosition(date, lat, lng);
   const illum = SunCalc.getMoonIllumination(date);
 
-  // --- Cross-day moonrise / moonset logic ---
   const todayTimes = SunCalc.getMoonTimes(date, lat, lng);
   let rise = todayTimes.rise ? safeDate(todayTimes.rise) : null;
   let set = todayTimes.set ? safeDate(todayTimes.set) : null;
   let riseDay = 0;
   let setDay = 0;
 
-  // If rise is missing today, check yesterday then tomorrow
   if (!rise) {
     ({ time: rise, day: riseDay } = findCrossDayTime(date, lat, lng, 'rise'));
   }
-
-  // If set is missing today, check yesterday then tomorrow
   if (!set) {
     ({ time: set, day: setDay } = findCrossDayTime(date, lat, lng, 'set'));
   }
@@ -154,35 +107,14 @@ export function getMoonData(date, lat, lng) {
   };
 }
 
-/* ---------- Trajectories ---------- */
-
-/**
- * Compute the sun's azimuth/altitude at 5-minute intervals for the full day.
- *
- * @param {Date}     dateBase - Reference date (used for dependency tracking).
- * @param {number}   lat      - Latitude.
- * @param {number}   lng      - Longitude.
- * @param {Function} makeDate - Factory `(minuteOfDay) => Date` in the correct timezone.
- * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
- */
 export function getSunTrajectory(dateBase, lat, lng, makeDate) {
   return buildTrajectory(SunCalc.getPosition, lat, lng, makeDate);
 }
 
-/**
- * Compute the moon's azimuth/altitude at 5-minute intervals for the full day.
- *
- * @param {Date}     dateBase - Reference date.
- * @param {number}   lat      - Latitude.
- * @param {number}   lng      - Longitude.
- * @param {Function} makeDate - Factory `(minuteOfDay) => Date` in the correct timezone.
- * @returns {Array<{ minutes: number, azimuthDeg: number, altitudeDeg: number }>}
- */
 export function getMoonTrajectory(dateBase, lat, lng, makeDate) {
   return buildTrajectory(SunCalc.getMoonPosition, lat, lng, makeDate);
 }
 
-/* ---------- Moon phase name ---------- */
 export function getMoonPhaseName(phase) {
   if (phase < 0.03 || phase > 0.97) return 'New Moon';
   if (phase < 0.22) return 'Waxing Crescent';

@@ -42,7 +42,6 @@ body {
   backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
 }
-/* Firefox fallback: if backdrop-filter is unsupported, use a more opaque bg */
 @supports not (backdrop-filter: blur(1px)) {
   .glass {
     background: rgba(15, 23, 42, 0.92);
@@ -52,7 +51,6 @@ body {
   }
 }
 
-/* Light-mode glass: stronger background for legibility */
 .glass-light {
   background: rgba(255, 255, 255, 0.82);
   -webkit-backdrop-filter: blur(24px);
@@ -60,7 +58,6 @@ body {
   border: 1px solid rgba(203, 213, 225, 0.5);
 }
 
-/* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }
@@ -72,20 +69,11 @@ body {
   border-radius: 4px;
 }
 
-/* Range sliders */
 input[type="range"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  /*
-   * display: block eliminates the inline-block baseline descender gap that
-   * browsers add below inline/inline-block elements inside a block container.
-   * Without this the parent .relative div is ~26px tall (input 20px + ~6px
-   * descender space), which shifts the top-1/2 -translate-y-1/2 gradient
-   * overlay 3px lower than the input's own vertical center.
-   */
   display: block;
-  /* Container height = thumb size so the full thumb area is clickable */
   height: var(--slider-thumb-size);
   width: 100%;
   background: transparent;
@@ -115,24 +103,9 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-  /*
-   * WebKit positions the thumb so its top edge aligns with the track's top
-   * edge by default (when appearance: none is set). Shift UP by half the
-   * size difference to vertically center the thumb on the track.
-   *
-   * Formula: (trackHeight - thumbSize) / 2
-   * = (14px - 20px) / 2 = -3px
-   *
-   * Using custom properties avoids hardcoded pixel drift on high-DPI displays
-   * and keeps this in sync with --slider-track-height / --slider-thumb-size.
-   */
   margin-top: calc((var(--slider-track-height) - var(--slider-thumb-size)) / 2);
 }
 
-/* On touch devices, expand the thumb hit area with a transparent border/padding
-   trick: use a larger invisible area via padding on the input container.
-   We achieve this by increasing the input height on mobile so there is more
-   vertical tap room above and below the thumb without changing its visual. */
 @media (pointer: coarse) {
   input[type="range"] {
     --slider-touch-padding: 12px;
@@ -152,13 +125,8 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-  /*
-   * Firefox naturally centers the thumb on the track — no offset required.
-   * (Any translateY here would push the thumb off-center.)
-   */
 }
 
-/* Sliders with a custom gradient track overlay: make native track transparent */
 .time-slider-over-gradient,
 .year-slider-over-gradient {
   background: transparent !important;
@@ -174,12 +142,10 @@ input[type="range"]::-moz-range-thumb {
   background: transparent !important;
 }
 
-/* Date input dark theme */
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(0.7);
 }
 
-/* Mapbox controls */ 
 .mapboxgl-ctrl-top-left,
 .mapboxgl-ctrl-top-right,
 .mapboxgl-ctrl-bottom-left,
@@ -193,36 +159,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-/* * Force the React wrapper to be the full viewport. 
- * Using height: 100% here is often more reliable than dvh 
- * for background maps when viewport-fit=cover is active.
- */
 .app-root {
   height: 100%;
   width: 100%;
   position: relative;
 }
 
-/*
- * Mobile bottom-sheet inner panel — safe-area-inset-bottom padding.
- *
- * The outer fixed panel intentionally extends to bottom: 0 (the physical screen
- * edge) so the glass background fills behind the home indicator.  This rule
- * adds transparent padding inside the flex column so interactive content
- * (sliders, buttons) stops above the home indicator zone.
- *
- * Desktop panels are unaffected: the md: breakpoint takes precedence and the
- * padding is reset to 0.
- */
 @media (max-width: 767px) {
   .side-panel-inner {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
-/* * Ensure the Mapbox container itself is absolutely positioned 
- * to fill its parent (.app-root) entirely.
- */
 .map-container {
   position: absolute;
   top: 0;

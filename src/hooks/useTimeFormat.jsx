@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext, useMemo } from 'react';
-import { formatTime } from '../utils/timezone';
+import { formatTime } from '../shared/utils/timezone';
 
 const TimeFormatContext = createContext(null);
 

@@ -8,8 +8,8 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { getSunData, getMoonData, getSunTrajectory, getMoonTrajectory } from '../utils/sunMoonCalc';
-import { makeLocalDate } from '../utils/timezone';
+import { getSunData, getMoonData, getSunTrajectory, getMoonTrajectory } from '../shared/utils/sunMoonCalc';
+import { makeLocalDate } from '../shared/utils/timezone';
 
 /**
  * Compute all sun/moon calculation results for the current date and location.

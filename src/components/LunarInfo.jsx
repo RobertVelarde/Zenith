@@ -4,8 +4,8 @@
  * @module components/LunarInfo
  */
 
-import { formatTimeCrossDay } from '../utils/timezone';
-import { getMoonPhaseName } from '../utils/sunMoonCalc';
+import { formatTimeCrossDay } from '../shared/utils/timezone';
+import { getMoonPhaseName } from '../shared/utils/sunMoonCalc';
 import { LABELS } from '../config';
 import DataRow from './DataRow';
 import MoonPhaseIcon from './MoonPhaseIcon';

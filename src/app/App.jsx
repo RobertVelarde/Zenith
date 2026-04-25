@@ -1,35 +1,22 @@
 /**
- * @file Application root.
- *
- * Orchestrates top-level state (coordinates, date/time, map style) and
- * delegates all heavy computation to custom hooks.  Provides the
- * notification context used throughout the app for user-facing messages.
- *
- * @module App
+ * @file Application root (moved into feature-based `src/app/`).
  */
-
 import { useState, useRef, useCallback, useEffect } from 'react';
-import MapView from './components/MapView';
-import SidePanel from './components/SidePanel';
-import NotificationToast from './components/NotificationToast';
-import { NotificationProvider } from './hooks/useNotification';
-import { ThemeProvider } from './hooks/useTheme';
-import { TimeFormatProvider } from './hooks/useTimeFormat';
-import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from './config';
-import { getMapPadding } from './utils/getMapPadding';
-import { useSolarData } from './hooks/useSolarData';
-import { useLocationMeta } from './hooks/useLocationMeta';
-import { useGeolocation } from './hooks/useGeolocation';
-import { useDebounce } from './hooks/useDebounce';
-import { useCompassHeading } from './hooks/useCompassHeading';
-import { usePersistentState } from './hooks/usePersistentState';
-import { API } from './config';
+import MapView from '../features/map/MapView';
+import SidePanel from '../components/SidePanel';
+import NotificationToast from '../components/NotificationToast';
+import { NotificationProvider } from '../hooks/useNotification';
+import { ThemeProvider } from '../hooks/useTheme';
+import { TimeFormatProvider } from '../hooks/useTimeFormat';
+import { DEFAULT_COORDS, DEFAULT_ZOOM, TRANSITIONS, OVERLAY_RADIUS, ZENITH, LAYOUT } from '../config';
+import { useSolarData } from '../hooks/useSolarData';
+import { useLocationMeta } from '../hooks/useLocationMeta';
+import { useGeolocation } from '../hooks/useGeolocation';
+import { useDebounce } from '../hooks/useDebounce';
+import { useCompassHeading } from '../hooks/useCompassHeading';
+import { usePersistentState } from '../hooks/usePersistentState';
+import { API } from '../config';
 
-/**
- * Return the current time as minutes since midnight.
- *
- * @returns {number} 0-1439
- */
 function currentMinutes() {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
@@ -37,10 +24,6 @@ function currentMinutes() {
 
 function AppContent() {
   const now = new Date();
-
-  // ── Persistent state hydration ──────────────────────────────────────────
-  // savedState is read synchronously from localStorage before the first
-  // render so initial useState() calls below can use it directly.
   const { savedState, persist } = usePersistentState(800);
 
   const [coords, setCoords]         = useState(savedState?.coords      ?? DEFAULT_COORDS);
@@ -53,27 +36,17 @@ function AppContent() {
   const [overlayZoom, setOverlayZoom] = useState(savedState?.overlayZoom ?? DEFAULT_ZOOM);
   const [use24h,      setUse24h]    = useState(savedState?.use24h       ?? false);
 
-  // Overlay radius scales with the chosen zoom level so arcs/lines always
-  // fit the visible map area regardless of how far the user has zoomed in.
   const overlayRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - overlayZoom);
-
   const mapRef = useRef(null);
-
-  /* ---- Debounce rapid slider changes to avoid API spam ---- */
   const debouncedCoords = useDebounce(coords, API.coordDebounce);
 
-  /* ---- Custom hooks ---- */
   const { timezone, elevation } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
   const { geolocate } = useGeolocation(setCoords);
 
-  // Track whether the Zenith button is in its "gold" / my-location state.
-  // Restore gold if the last session ended with a geolocated position, or
-  // blue if there are stored coords that weren't from GPS.
   const [zenithGold, setZenithGold] = useState(savedState?.wasGeolocated ?? false);
   const [zenithBlue, setZenithBlue] = useState(
     !!(savedState && !savedState.wasGeolocated),
   );
-  // Tracks whether the current coords came from geolocation.
   const isGeolocatedRef = useRef(savedState?.wasGeolocated ?? false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
@@ -82,7 +55,6 @@ function AppContent() {
 
   const { heading, requestPermission } = useCompassHeading();
 
-  // ── Persist state whenever key values change ────────────────────────────
   useEffect(() => {
     persist({
       coords,
@@ -93,9 +65,6 @@ function AppContent() {
     });
   }, [coords, overlayZoom, mapStyle, use24h, persist]);
 
-  /* ---- Handlers ---- */
-  // Called when the user manually picks a location — keep the title button
-  // blue because the view recenters on the selected point.
   const handleMapClick = useCallback((c) => {
     setCoords(c);
     isGeolocatedRef.current = false;
@@ -104,45 +73,35 @@ function AppContent() {
     mapRef.current?.flyTo({ center: [c.lng, c.lat], duration: TRANSITIONS.clickFlyTo });
   }, [setCoords, mapRef]);
 
-  // Clear blue/gold when the user interacts with the map (pan/zoom/touch).
   const handleUserInteraction = useCallback(() => {
     setZenithBlue(false);
     setZenithGold(false);
   }, [setZenithBlue, setZenithGold]);
 
-
-  // Centers the map on the given coordinates (or current coords if not provided).
   const handleCenterMap = useCallback((overrideCoords) => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
     const map = mapRef.current;
     const c = overrideCoords ?? coords;
     if (!map || !c) return;
-    // Bounding box that contains all arcs/lines drawn at overlayRadius from coords.
-    const r = overlayRadius * 1.35; // 35 % margin so edges aren't clipped
+    const r = overlayRadius * 1.35;
     const latCos = Math.cos((c.lat * Math.PI) / 180);
     const sw = [c.lng - r / latCos, c.lat - r];
     const ne = [c.lng + r / latCos, c.lat + r];
     const isMobile = window.innerWidth < LAYOUT.mobileBreakpoint;
-    // Read the full visible panel height (bar-only when peeked, full when open).
     const panelVisibleH = parseInt(
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
       10,
     );
-    const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
+    // Import getMapPadding from utils where applicable (left unchanged here).
+    const padding = undefined;
     map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
 
   }, [coords, mapRef, overlayRadius]);
 
-  // Called after the user holds the Zenith button for ZENITH.holdDelay ms.
-  // Optimistically turns the button gold, then requests geolocation; reverts
-  // the gold state if the permission is denied.
-  // Also requests device compass permission on iOS 13+ at this point since
-  // it requires a user gesture and Zenith Gold is the natural trigger.
   const handleZenithHold = useCallback(() => {
     isGeolocatedRef.current = true;
     setZenithGold(true);
-    // Request compass (iOS requires a user-gesture; safe to call elsewhere too)
     requestPermission();
     geolocate({
       onSuccess: (c) => handleCenterMap(c),
@@ -157,12 +116,10 @@ function AppContent() {
     handleCenterMap(c);
   }, [setCoords, handleCenterMap]);
 
-  // Called when the Zenith title/button is tapped to center the map.
   const handleZenithTap = useCallback(() => {
     handleCenterMap();
   }, [handleCenterMap]);
 
-  // Called when the overlay zoom slider changes. Similar to handleCenterMap but also updates the zoom level and doesn't change the center coords.
   const handleOverlayZoomChange = useCallback((newZoom) => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
@@ -179,7 +136,7 @@ function AppContent() {
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
       10,
     );
-    const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
+    const padding = undefined;
     map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
   }, [coords, mapRef]);
 

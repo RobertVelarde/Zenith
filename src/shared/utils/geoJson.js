@@ -5,10 +5,10 @@
  * as a data source.  Features carry `kind` properties that the layer filters
  * in MapView use to apply the correct styling.
  *
- * @module utils/geoJson
+ * @module shared/utils/geoJson
  */
 
-import { OVERLAY_RADIUS } from '../config';
+import { OVERLAY_RADIUS } from '../../config';
 
 // Scale factors relative to the overlay radius (r)
 const SCALE_EVENT_LINE   = 1.3;   // sunrise/set, moonrise/set, heading lines
@@ -19,15 +19,6 @@ const SCALE_MOON         = 0.85;  // moon arc + point + direction line
 // Azimuth discontinuity guard: bearing diff above this is treated as a wrap
 const AZ_JUMP_THRESHOLD = 100;
 
-/**
- * Project a point at a given bearing and distance from a centre coordinate.
- *
- * @param {number} lat        - Centre latitude (degrees).
- * @param {number} lng        - Centre longitude (degrees).
- * @param {number} bearingDeg - Bearing in degrees from North.
- * @param {number} dist       - Distance in degrees.
- * @returns {[number, number]} [longitude, latitude]
- */
 function project(lat, lng, bearingDeg, dist) {
   const rad = (bearingDeg * Math.PI) / 180;
   const latRad = (lat * Math.PI) / 180;
@@ -37,12 +28,6 @@ function project(lat, lng, bearingDeg, dist) {
   ];
 }
 
-/**
- * Split a trajectory into contiguous segments that each stay entirely above
- * or below the horizon.  Breaking on altitude sign-changes (and on large
- * azimuth jumps as a safety net) prevents non-sequential points from being
- * joined into chord lines.
- */
 function buildArcSegments(trajectory, lat, lng, r) {
   if (trajectory.length === 0) return [];
   const segments = [];
@@ -65,7 +50,6 @@ function buildArcSegments(trajectory, lat, lng, r) {
   return segments;
 }
 
-/* ---------- SUN ARC ---------- */
 export function sunArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   const segments = buildArcSegments(trajectory, lat, lng, r);
   return {
@@ -78,7 +62,6 @@ export function sunArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   };
 }
 
-/* ---------- SUN DIRECTION LINES ---------- */
 export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   const c = [lng, lat];
   const feats = [];
@@ -94,7 +77,6 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
     });
   };
 
-  // Current sun position line — always drawn, styled by altitude via properties
   feats.push({
     type: 'Feature',
     properties: {
@@ -114,7 +96,6 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   return { type: 'FeatureCollection', features: feats };
 }
 
-/* ---------- Current sun point ---------- */
 export function sunPointGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   const alt = sunData.position.altitude;
   const coord = project(lat, lng, sunData.position.azimuth, r);
@@ -130,7 +111,6 @@ export function sunPointGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   };
 }
 
-/* ---------- MOON ARC ---------- */
 export function moonArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   const segments = buildArcSegments(trajectory, lat, lng, r * SCALE_MOON);
   return {
@@ -143,20 +123,17 @@ export function moonArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   };
 }
 
-/* ---------- MOON DIRECTION LINE + POINT ---------- */
 export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
   const c = [lng, lat];
   const alt = moonData.position.altitude;
   const belowHorizon = alt < 0;
   const coord = project(lat, lng, moonData.position.azimuth, r * SCALE_MOON);
   const features = [
-    // Moon azimuth direction line — solid when above, dashed when below
     {
       type: 'Feature',
       properties: { kind: belowHorizon ? 'moon-line-below' : 'moon-line', altitude: alt },
       geometry: { type: 'LineString', coordinates: [c, coord] },
     },
-    // Moon position point
     {
       type: 'Feature',
       properties: { kind: belowHorizon ? 'moon-point-below' : 'moon-point', altitude: alt },
@@ -164,7 +141,6 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
     },
   ];
 
-  // Static moonrise / moonset direction lines
   const az = moonData.eventAzimuths;
   if (az?.moonrise != null) {
     features.push({
@@ -184,16 +160,6 @@ export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
   return { type: 'FeatureCollection', features };
 }
 
-/* ---------- COMPASS HEADING LINE ---------- */
-/**
- * Build a GeoJSON line in the direction the device's compass is pointing.
- * The line extends from the origin in the heading direction (×1.3 radius).
- *
- * @param {number} heading - Compass bearing 0–360 (degrees from North).
- * @param {number} lat
- * @param {number} lng
- * @param {number} r - Overlay radius in degrees.
- */
 export function headingLineGeoJSON(heading, lat, lng, r = OVERLAY_RADIUS) {
   const tip = project(lat, lng, heading, r * SCALE_EVENT_LINE);
   return {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { getMapPadding } from '../src/utils/getMapPadding.js';
-import { LAYOUT } from '../src/config.js';
+import { getMapPadding } from '../src/shared/utils/getMapPadding.js';
+import { LAYOUT } from '../src/config';
 
 test('getMapPadding returns correct mobile padding', async () => {
   const isMobile = true;

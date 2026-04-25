@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { formatDuration } from '../utils/timezone';
+import { formatDuration } from '../shared/utils/timezone';
 import { LABELS } from '../config';
 import DataRow from './DataRow';
 import { useTheme } from '../hooks/useTheme';

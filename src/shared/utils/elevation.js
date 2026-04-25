@@ -4,21 +4,13 @@
  * Results are cached by rounded coordinates to prevent redundant requests.
  * Returns `null` for locations outside the service area (Non-US).
  *
- * @module utils/elevation
+ * @module shared/utils/elevation
  */
 
-import { API } from '../config';
+import { API } from '../../config';
 
-/** @type {Map<string, number>} */
 const cache = new Map();
 
-/**
- * Fetch elevation in metres for the given coordinate.
- *
- * @param {number} lat - Latitude in decimal degrees.
- * @param {number} lng - Longitude in decimal degrees.
- * @returns {Promise<number|null>} Elevation in metres, or null if unavailable.
- */
 export async function getElevation(lat, lng) {
   const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
   if (cache.has(key)) return cache.get(key);
@@ -34,8 +26,6 @@ export async function getElevation(lat, lng) {
         return elev;
       }
     }
-  } catch {
-    /* network error */
-  }
+  } catch {}
   return null;
 }

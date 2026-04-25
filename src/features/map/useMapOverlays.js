@@ -6,7 +6,7 @@
  * map initialization and event wiring.
  */
 import { useEffect, useRef } from 'react';
-import { OVERLAY_RADIUS, MAP_LAYER_STYLES as LS } from '../config';
+import { OVERLAY_RADIUS, MAP_LAYER_STYLES as LS } from '../../config';
 import {
   sunArcGeoJSON,
   sunLinesGeoJSON,
@@ -14,7 +14,7 @@ import {
   moonArcGeoJSON,
   moonPointGeoJSON,
   headingLineGeoJSON,
-} from '../utils/geoJson';
+} from '../../shared/utils/geoJson';
 
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
@@ -53,7 +53,6 @@ function addSourcesAndLayers(map) {
 
   const addIf = (id, spec) => { if (!map.getLayer(id)) map.addLayer(spec); };
 
-  // ---- Sun layers ----
   addIf('sun-arc-above', {
     id: 'sun-arc-above', source: 'sun-arc', type: 'line',
     filter: ['==', ['get', 'kind'], 'sun-above'],
@@ -100,7 +99,6 @@ function addSourcesAndLayers(map) {
     paint: { 'circle-radius': LS.sunPointBelow.radius, 'circle-color': LS.sunPointBelow.color, 'circle-stroke-width': LS.sunPointBelow.strokeWidth, 'circle-stroke-color': LS.sunPointBelow.strokeColor, 'circle-opacity': LS.sunPointBelow.opacity },
   });
 
-  // ---- Moon layers ----
   addIf('moon-arc-above', {
     id: 'moon-arc-above', source: 'moon-arc', type: 'line',
     filter: ['==', ['get', 'kind'], 'moon-above'],
@@ -142,7 +140,6 @@ function addSourcesAndLayers(map) {
     paint: { 'circle-radius': LS.moonPointBelow.radius, 'circle-color': LS.moonPointBelow.color, 'circle-stroke-width': LS.moonPointBelow.strokeWidth, 'circle-stroke-color': LS.moonPointBelow.strokeColor, 'circle-opacity': LS.moonPointBelow.opacity },
   });
 
-  // ---- Compass heading line ----
   addIf('heading-line', {
     id: 'heading-line', source: 'heading-line', type: 'line',
     filter: ['==', ['get', 'kind'], 'heading-line'],
@@ -153,7 +150,6 @@ function addSourcesAndLayers(map) {
     },
   });
 
-  // ---- Debug bounding-box overlay ----
   addIf('debug-bounds-box', {
     id: 'debug-bounds-box', source: 'debug-bounds', type: 'line',
     filter: ['==', ['get', 'kind'], 'box'],
@@ -166,12 +162,6 @@ function addSourcesAndLayers(map) {
   });
 }
 
-/**
- * Hook: attach overlay management to a Mapbox `mapRef`.
- *
- * @param {React.MutableRefObject} mapRef - ref containing the Mapbox instance
- * @param {Object} overlayData - current overlay payload (coords, trajectories, etc.)
- */
 export default function useMapOverlays(mapRef, overlayData) {
   const overlayDataRef = useRef(overlayData);
   overlayDataRef.current = overlayData;
@@ -187,7 +177,6 @@ export default function useMapOverlays(mapRef, overlayData) {
 
     map.on('style.load', onStyleLoad);
     if (map.isStyleLoaded && map.isStyleLoaded()) {
-      // style already loaded, ensure sources/layers exist
       addSourcesAndLayers(map);
       pushOverlayData(map, overlayDataRef.current);
     }
@@ -197,7 +186,6 @@ export default function useMapOverlays(mapRef, overlayData) {
     };
   }, [mapRef]);
 
-  // Push updates when overlayData changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;

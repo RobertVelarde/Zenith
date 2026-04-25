@@ -8,8 +8,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getTimezone } from '../utils/timezone';
-import { getElevation } from '../utils/elevation';
+import { getTimezone } from '../shared/utils/timezone';
+import { getElevation } from '../shared/utils/elevation';
 import { useNotification } from './notificationContext';
 import { LABELS } from '../config';
 

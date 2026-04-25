@@ -237,3 +237,23 @@ export const LABELS = {
   // Month abbreviations
   months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
 };
+
+export default {
+  MAPBOX_TOKEN,
+  MAP_STYLES,
+  DEFAULT_COORDS,
+  DEFAULT_ZOOM,
+  OVERLAY_RADIUS,
+  OVERLAY_ZOOM,
+  MAP_LAYER_STYLES,
+  MARKER_COLOR,
+  TWILIGHT_COLORS,
+  YEARLY_GRADIENT_PALETTE,
+  GLASS,
+  SLIDER,
+  TRANSITIONS,
+  ZENITH,
+  LAYOUT,
+  API,
+  LABELS,
+};

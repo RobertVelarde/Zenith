@@ -20,7 +20,7 @@
  */
 
 import { useRef, useMemo, useEffect } from 'react';
-import * as storageManager from '../utils/storageManager';
+import * as storageManager from '../shared/utils/storageManager';
 
 /**
  * @param {number} [debounceMs=800] - Milliseconds to wait after the last

@@ -15,7 +15,7 @@ import {
   MAP_LAYER_STYLES as LS, MARKER_COLOR, LABELS,
 } from '../config';
 import { useNotification } from '../hooks/notificationContext';
-import useMapOverlays from '../hooks/useMapOverlays';
+import useMapOverlays from '../features/map/useMapOverlays';
 import {
   sunArcGeoJSON,
   sunLinesGeoJSON,
@@ -23,7 +23,7 @@ import {
   moonArcGeoJSON,
   moonPointGeoJSON,
   headingLineGeoJSON,
-} from '../utils/geoJson';
+} from '../shared/utils/geoJson';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 

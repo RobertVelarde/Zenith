@@ -11,7 +11,7 @@
  * @param {number} opts.panelWidth - panel width in px (desktop)
  * @returns {{ top: number, right: number, bottom: number, left: number }} padding
  */
-import { LAYOUT } from '../config';
+import { LAYOUT } from '../../config';
 
 export function getMapPadding({ isMobile, panelVisibleH, panelWidth }) {
   const pad = LAYOUT.mapPadding?.default ?? 24;
