@@ -5,15 +5,12 @@ import { useTheme } from '../hooks/useTheme';
 import PanelHeader from './PanelHeader';
 import PinnedSection from './PinnedSection';
 import PanelScrollBody from './PanelScrollBody';
+import { useAppState, useAppDispatch } from '../app/AppContext';
 
-export default function SidePanel({
-  coords, year, month, day, timeMinutes, elevation,
-  sunData, moonData, isOpen,
-  onCoordsChange, onDateChange, onTimeChange, onCenterMap,
-  overlayZoom, onOverlayZoomChange, onZenithHold, zenithGold, onZenithTap,
-  zenithBlue,
-}) {
+export default function SidePanel() {
   const { glassClass, borderColor } = useTheme();
+  const { panelOpen } = useAppState();
+  const { handleCenterMap } = useAppDispatch();
   const [vp, setVp] = useState({ vw: window.innerWidth, vh: window.innerHeight });
   useEffect(() => {
     const u = () => setVp({ vw: window.innerWidth, vh: window.innerHeight });
@@ -59,8 +56,8 @@ export default function SidePanel({
     () => (!isMobile || stage !== 2) ? null : Math.max(0, vp.vh - vp.vw - headerHeight),
     [isMobile, stage, vp, headerHeight],
   );
-  const onCenterMapRef = useRef(onCenterMap);
-  useEffect(() => { onCenterMapRef.current = onCenterMap; }, [onCenterMap]);
+  const onCenterMapRef = useRef(handleCenterMap);
+  useEffect(() => { onCenterMapRef.current = handleCenterMap; }, [handleCenterMap]);
   const isFirstStageEffect = useRef(true);
   useEffect(() => {
     if (isFirstStageEffect.current) { isFirstStageEffect.current = false; return; }
@@ -89,14 +86,12 @@ export default function SidePanel({
       className={`fixed z-30 transition-transform duration-300 ease-out
         md:top-0 md:left-0 md:h-full md:w-[var(--panel-width)]
         bottom-0 left-0 right-0 md:right-auto h-[100dvh] md:h-full
-        touch-pan-y md:touch-auto md:${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        touch-pan-y md:touch-auto md:${panelOpen ? 'translate-x-0' : '-translate-x-full'}`}
       style={panelStyle}
     >
       <div className={`side-panel-inner h-full ${glassClass} md:rounded-none rounded-t-2xl flex flex-col overflow-hidden md:overflow-visible`}>
         <PanelHeader
           ref={headerRef} stage={stage} setStage={setStage}
-          zenithGold={zenithGold} zenithBlue={zenithBlue} onZenithTap={onZenithTap} onZenithHold={onZenithHold}
-          coords={coords} onCoordsChange={onCoordsChange}
           onDragStart={onDragStart} onDragEnd={onDragEnd} resultsBottomPx={resultsBottomPx}
         />
         <div
@@ -104,17 +99,13 @@ export default function SidePanel({
           className={`shrink-0 px-4 border-t border-b ${borderColor}`}
           style={{ display: (isMobile && stage === 1) ? undefined : 'none', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
         >
-          <PinnedSection {...{ sunData, moonData, year, month, day,
-            overlayZoom, onOverlayZoomChange, onDateChange,
-            onScrollToSolar, onScrollToLunar }} />
+          <PinnedSection onScrollToSolar={onScrollToSolar} onScrollToLunar={onScrollToLunar} />
         </div>
         <PanelScrollBody
           scrollBodyRef={scrollBodyRef} onTouchStart={onScrollBodyTouchStart} onTouchEnd={onScrollBodyTouchEnd}
           scrollBodyMaxH={scrollBodyMaxH} isMobile={isMobile} stage={stage}
           solarSectionRef={solarSectionRef} lunarSectionRef={lunarSectionRef}
-          {...{ sunData, moonData, year, month, day, elevation,
-            overlayZoom, onOverlayZoomChange, onDateChange, onTimeChange,
-            timeMinutes, coords, onScrollToSolar, onScrollToLunar }}
+          onScrollToSolar={onScrollToSolar} onScrollToLunar={onScrollToLunar}
         />
       </div>
     </div>

@@ -16,21 +16,13 @@ import MoonPhaseIcon from './MoonPhaseIcon';
 import { OVERLAY_ZOOM, DEFAULT_ZOOM } from '../config';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../app/AppContext';
 
-export default function PinnedSection({
-  sunData,
-  moonData,
-  year,
-  month,
-  day,
-  overlayZoom,
-  onOverlayZoomChange,
-  onDateChange,
-  onScrollToSolar,
-  onScrollToLunar,
-}) {
+export default function PinnedSection({ onScrollToSolar, onScrollToLunar }) {
   const { isLight, borderColor } = useTheme();
   const { fmt } = useTimeFormat();
+  const { sunData, moonData, year, month, day, overlayZoom } = useAppState();
+  const { handleOverlayZoomChange, handleDateChange } = useAppDispatch();
   function pad(n) { return String(n).padStart(2, '0'); }
 
   return (
@@ -77,7 +69,7 @@ export default function PinnedSection({
             value={`${year}-${pad(month)}-${pad(day)}`}
             onChange={(e) => {
                 const [y, m, d] = e.target.value.split('-').map(Number);
-                if (y && m && d) onDateChange(y, m, d);
+                if (y && m && d) handleDateChange(y, m, d);
             }}
             className={`w-full max-w-full appearance-none rounded-lg px-3 py-1.5 text-sm outline-none
               ${isLight
@@ -99,7 +91,7 @@ export default function PinnedSection({
           max={OVERLAY_ZOOM.max}
           step={OVERLAY_ZOOM.step}
           value={overlayZoom ?? DEFAULT_ZOOM}
-          onChange={(e) => onOverlayZoomChange?.(Number(e.target.value))}
+          onChange={(e) => handleOverlayZoomChange?.(Number(e.target.value))}
           className="w-full"
         />
         <div className={`flex justify-between text-[9px] mt-0.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>

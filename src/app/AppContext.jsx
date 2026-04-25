@@ -177,27 +177,7 @@ export function AppProvider({ children }) {
                 onUserInteraction={handleUserInteraction}
               />
 
-              <SidePanel
-                coords={coords}
-                year={year}
-                month={month}
-                day={day}
-                timeMinutes={timeMinutes}
-                elevation={elevation}
-                sunData={sunData}
-                moonData={moonData}
-                isOpen={panelOpen}
-                onCoordsChange={handleCoordsChange}
-                onDateChange={handleDateChange}
-                onTimeChange={setTimeMinutes}
-                onCenterMap={handleCenterMap}
-                overlayZoom={overlayZoom}
-                onOverlayZoomChange={handleOverlayZoomChange}
-                onZenithHold={handleZenithHold}
-                zenithGold={zenithGold}
-                onZenithTap={handleZenithTap}
-                zenithBlue={zenithBlue}
-              />
+              <SidePanel />
 
               <NotificationToast />
             </div>

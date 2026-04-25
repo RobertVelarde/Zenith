@@ -24,6 +24,7 @@ import AdvancedPanel from './AdvancedPanel';
 import { LABELS } from '../config';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../app/AppContext';
 
 export default function PanelScrollBody({
   // Ref + gesture handlers (from useBottomSheet via SidePanel)
@@ -38,26 +39,14 @@ export default function PanelScrollBody({
   // Section refs for scroll-to navigation
   solarSectionRef,
   lunarSectionRef,
-  // PinnedSection props (rendered at the top of the scroll body)
-  sunData,
-  moonData,
-  year,
-  month,
-  day,
-  overlayZoom,
-  onOverlayZoomChange,
-  onDateChange,
+  // Scroll-to callbacks
   onScrollToSolar,
   onScrollToLunar,
-  // DateTimeControls props
-  timeMinutes,
-  onTimeChange,
-  coords,
-  // AdvancedPanel props
-  elevation,
 }) {
   const { isLight, borderColor } = useTheme();
   const { timezone, use24h, setUse24h } = useTimeFormat();
+  const { sunData, moonData, year, month, day, overlayZoom, timeMinutes, elevation, coords } = useAppState();
+  const { handleOverlayZoomChange, handleDateChange, setTimeMinutes } = useAppDispatch();
   return (
     <div
       ref={scrollBodyRef}
@@ -74,16 +63,9 @@ export default function PanelScrollBody({
       }}
     >
       {/* Pinned section duplicate — always visible in the scroll body */}
+
       <div className={`pb-3 border-b ${borderColor}`}>
         <PinnedSection
-          sunData={sunData}
-          moonData={moonData}
-          year={year}
-          month={month}
-          day={day}
-          overlayZoom={overlayZoom}
-          onOverlayZoomChange={onOverlayZoomChange}
-          onDateChange={onDateChange}
           onScrollToSolar={onScrollToSolar}
           onScrollToLunar={onScrollToLunar}
         />
@@ -95,24 +77,21 @@ export default function PanelScrollBody({
         day={day}
         timeMinutes={timeMinutes}
         sunTimes={sunData?.times}
-        onDateChange={onDateChange}
-        onTimeChange={onTimeChange}
+        onDateChange={handleDateChange}
+        onTimeChange={setTimeMinutes}
         coords={coords}
       />
 
       <div ref={solarSectionRef} className={`border-t ${borderColor} pt-3`}>
-        <SolarInfo sunData={sunData} />
+        <SolarInfo />
       </div>
 
       <div ref={lunarSectionRef} className={`border-t ${borderColor} pt-3`}>
-        <LunarInfo moonData={moonData} />
+        <LunarInfo />
       </div>
 
       <div className={`border-t ${borderColor} pt-3`}>
-        <AdvancedPanel
-          sunData={sunData}
-          elevation={elevation}
-        />
+        <AdvancedPanel />
       </div>
 
       {timezone && (

@@ -27,10 +27,6 @@ export default forwardRef(function PanelHeader({
   // Stage control (grab handle)
   stage,
   setStage,
-  // Zenith button
-  zenithGold,
-  zenithBlue,
-  // Coordinates + geocoding are read from App context
   // Gesture handlers (forwarded from useBottomSheet via SidePanel)
   onDragStart,
   onDragEnd,
@@ -40,7 +36,7 @@ export default forwardRef(function PanelHeader({
   const { notify } = useNotification();
   const { isDark, isSatellite, setIsDark, setIsSatellite, isLight, glassClass, textPrimary } = useTheme();
   const { use24h, setUse24h } = useTimeFormat();
-  const { coords } = useAppState();
+  const { coords, zenithGold, zenithBlue } = useAppState();
   const { handleZenithTap, handleZenithHold, handleCoordsChange } = useAppDispatch();
 
   // ── Tap-flash state ────────────────────────────────────────────────────────
