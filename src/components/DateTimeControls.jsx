@@ -77,6 +77,26 @@ function getDayLengthMs(date, lat, lng) {
   return SunCalc.getPosition(noon, lat, lng).altitude > 0 ? 86400000 : 0;
 }
 
+/**
+ * Build a CSS linear-gradient string for the year slider track.
+ *
+ * Color mapping — each day's daylight duration (0–24 h) is mapped to an
+ * RGB triple by linearly interpolating through three palette stops:
+ *   dark (≈ 0 h) → mid (≈ 12 h) → bright (≈ 24 h).
+ * This gives an intuitive visual cue: winter days appear dark/cool, summer
+ * days appear bright/warm, irrespective of the user's locale.
+ *
+ * Scale rationale — the gradient spans the absolute 0–24 h range rather
+ * than normalizing to the year's shortest/longest day so that comparisons
+ * between different latitudes remain meaningful.
+ *
+ * Samples every 10 days for performance (≈36 gradient stops per year).
+ *
+ * @param {number} lat  - Latitude in decimal degrees.
+ * @param {number} lng  - Longitude in decimal degrees.
+ * @param {number} year - Calendar year (used for leap-year detection).
+ * @returns {string} CSS `linear-gradient(to right, …)` string.
+ */
 function buildYearlyGradient(lat, lng, year) {
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInYear = isLeap ? 366 : 365;
