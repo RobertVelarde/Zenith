@@ -9,6 +9,7 @@ import { LABELS } from '../config';
 import DataRow from './DataRow';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState } from '../app/AppContext';
 
 /**
  * Render a summary of solar events (sunrise, sunset, golden hours, etc.)
@@ -20,9 +21,11 @@ import { useTimeFormat } from '../hooks/useTimeFormat';
  * @param {boolean} props.isLight  - Light-theme flag.
  * @param {boolean} props.use24h   - 24-hour time format flag.
  */
-export default function SolarInfo({ sunData }) {
+export default function SolarInfo({ sunData: propSunData } = {}) {
   const { isLight } = useTheme();
   const { fmt } = useTimeFormat();
+  const { sunData: ctxSunData } = useAppState() || {};
+  const sunData = ctxSunData ?? propSunData;
   if (!sunData) {
     return <div className={`text-xs ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>{LABELS.noData}</div>;
   }

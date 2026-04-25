@@ -16,6 +16,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useCompassHeading } from '../hooks/useCompassHeading';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { API } from '../config';
+import AppProvider from './AppContext';
 
 function currentMinutes() {
   const now = new Date();
@@ -196,7 +197,7 @@ function AppContent() {
 export default function App() {
   return (
     <NotificationProvider>
-      <AppContent />
+      <AppProvider />
     </NotificationProvider>
   );
 }

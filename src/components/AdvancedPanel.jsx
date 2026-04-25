@@ -11,6 +11,7 @@ import { LABELS } from '../config';
 import DataRow from './DataRow';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState } from '../app/AppContext';
 
 /**
  * @param {Object} props
@@ -21,10 +22,13 @@ import { useTimeFormat } from '../hooks/useTimeFormat';
  * @param {boolean}  props.use24h     - 24-hour format flag.
  * @param {Function} props.onToggle24h - Toggle between 12/24h.
  */
-export default function AdvancedPanel({ sunData, elevation }) {
+export default function AdvancedPanel({ sunData: propSunData, elevation: propElevation } = {}) {
   const [open, setOpen] = useState(false);
   const { isLight } = useTheme();
   const { fmt, timezone } = useTimeFormat();
+  const { sunData: ctxSunData, elevation: ctxElevation } = useAppState() || {};
+  const sunData = ctxSunData ?? propSunData;
+  const elevation = ctxElevation ?? propElevation;
 
   if (!sunData || !timezone) return null;
 

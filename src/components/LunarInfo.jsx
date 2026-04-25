@@ -11,6 +11,7 @@ import DataRow from './DataRow';
 import MoonPhaseIcon from './MoonPhaseIcon';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState } from '../app/AppContext';
 
 /**
  * Render lunar data for the current date/location.
@@ -21,9 +22,11 @@ import { useTimeFormat } from '../hooks/useTimeFormat';
  * @param {boolean} props.isLight  - Light-theme flag.
  * @param {boolean} props.use24h   - 24-hour time format flag.
  */
-export default function LunarInfo({ moonData }) {
+export default function LunarInfo({ moonData: propMoonData } = {}) {
   const { isLight } = useTheme();
   const { use24h, timezone } = useTimeFormat();
+  const { moonData: ctxMoonData } = useAppState() || {};
+  const moonData = ctxMoonData ?? propMoonData;
   if (!moonData || !timezone) return null;
 
   const t = moonData.times;

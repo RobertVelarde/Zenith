@@ -20,6 +20,7 @@ import { LABELS, API, ZENITH } from '../config';
 import { useNotification } from '../hooks/notificationContext';
 import { useTheme } from '../hooks/useTheme';
 import { useTimeFormat } from '../hooks/useTimeFormat';
+import { useAppState, useAppDispatch } from '../app/AppContext';
 import useGeoSearch from '../hooks/useGeoSearch';
 
 export default forwardRef(function PanelHeader({
@@ -29,11 +30,7 @@ export default forwardRef(function PanelHeader({
   // Zenith button
   zenithGold,
   zenithBlue,
-  onZenithTap,
-  onZenithHold,
-  // Coordinates + geocoding
-  coords,
-  onCoordsChange,
+  // Coordinates + geocoding are read from App context
   // Gesture handlers (forwarded from useBottomSheet via SidePanel)
   onDragStart,
   onDragEnd,
@@ -43,6 +40,8 @@ export default forwardRef(function PanelHeader({
   const { notify } = useNotification();
   const { isDark, isSatellite, setIsDark, setIsSatellite, isLight, glassClass, textPrimary } = useTheme();
   const { use24h, setUse24h } = useTimeFormat();
+  const { coords } = useAppState();
+  const { handleZenithTap, handleZenithHold, handleCoordsChange } = useAppDispatch();
 
   // ── Tap-flash state ────────────────────────────────────────────────────────
   const [titleFlash,  setTitleFlash]  = useState(false);
@@ -62,9 +61,9 @@ export default forwardRef(function PanelHeader({
     longPressTriggered.current = false;
     holdTimerRef.current = setTimeout(() => {
       longPressTriggered.current = true;
-      onZenithHold?.();
+      handleZenithHold?.();
     }, ZENITH.holdDelay);
-  }, [onZenithHold]);
+  }, [handleZenithHold]);
 
   const onZenithPointerUp = useCallback(() => {
     clearTimeout(holdTimerRef.current);
@@ -75,8 +74,8 @@ export default forwardRef(function PanelHeader({
       longPressTriggered.current = false;
       return; // long-press already handled; skip tap action
     }
-    onZenithTap?.();
-  }, [onZenithTap]);
+    handleZenithTap?.();
+  }, [handleZenithTap]);
 
   // ── Header bar mode ────────────────────────────────────────────────────────
   const [searchActive,   setSearchActive]   = useState(false);
