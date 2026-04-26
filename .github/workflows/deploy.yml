@@ -38,10 +38,11 @@ jobs:
         run: npx playwright install --with-deps chromium firefox
 
       # vite.config.js throws if .env.local is absent in development mode.
-      # Tests start a dev server via Playwright's webServer; give it a
-      # placeholder token so Vite launches without a real secret.
+      # Tests start a dev server via Playwright's webServer; provide the real
+      # (domain-restricted) token so Mapbox can reach idle and dismiss the
+      # loading overlay, which all browser tests depend on.
       - name: Create .env.local for test dev server
-        run: echo "VITE_MAPBOX_TOKEN=pk.test_placeholder" > .env.local
+        run: echo "VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_GITHUB_TOKEN }}" > .env.local
 
       - name: Run Playwright tests (Chromium + Firefox)
         run: npx playwright test --project=chromium --project=firefox
