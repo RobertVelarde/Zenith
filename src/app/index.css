@@ -10,7 +10,7 @@
   --slider-thumb-size: 20px;
 
   /* Panel width — keep in sync with LAYOUT.panelWidth in src/config.js */
-  --panel-width: 360px;
+  --panel-width: 380px;
 
   /* iOS safe-area insets (non-zero on notch/Dynamic Island/home-bar devices) */
   --sai-top:    env(safe-area-inset-top,    0px);

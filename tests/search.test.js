@@ -13,7 +13,7 @@ const SAMPLE_FEATURES = {
   ],
 };
 
-test('clicking a search result sets the app coordinates', async ({ page }) => {
+test('clicking a search result sets the app coordinates', async ({ page }, testInfo) => {
   // Mock geocoding API responses so tests don't rely on external network.
   await page.route('**/geocoding/v5/mapbox.places/**', async (route) => {
     await route.fulfill({
@@ -41,11 +41,22 @@ test('clicking a search result sets the app coordinates', async ({ page }) => {
     { timeout: 25_000 },
   );
 
-  // Ensure desktop layout so the inline dropdown is used in tests.
-  await page.setViewportSize({ width: 1280, height: 800 });
+  const isMobileProject = /mobile/i.test(testInfo.project.name);
+
+  // Keep desktop projects in desktop layout; mobile projects should use the
+  // real bottom-sheet flow.
+  if (!isMobileProject) {
+    await page.setViewportSize({ width: 1280, height: 800 });
+  } else {
+    const expandMenu = page.locator('button[aria-label="Expand menu"]');
+    await expect(expandMenu).toBeVisible({ timeout: 5000 });
+    await expandMenu.click({ force: true });
+  }
 
   // Open the search input and type a query.
-  await page.locator('button[aria-label="Search location"]').click({ force: true });
+  const searchButton = page.locator('button[aria-label="Search location"]').first();
+  await expect(searchButton).toBeVisible({ timeout: 5000 });
+  await searchButton.click({ force: true });
   await page.waitForFunction(
     () => {
       const overlay = document.querySelector('[data-testid="loading-screen"]');
@@ -58,12 +69,19 @@ test('clicking a search result sets the app coordinates', async ({ page }) => {
     { timeout: 10_000 },
   );
   const input = page.locator('input[placeholder^="Search location"]').first();
-  await expect(input).toBeVisible({ timeout: 5000 });
+  if (isMobileProject) {
+    // iOS/WebKit can occasionally collapse the header mode after the first tap.
+    if (await input.count() === 0) {
+      await searchButton.click({ force: true });
+    }
+  }
+  await expect(input).toBeVisible({ timeout: 10000 });
   await input.fill('Test');
 
-  // Wait for the mocked result to appear and click it.
-  await page.waitForSelector('text=Test Place, Example City', { timeout: 5000 });
-  await page.click('text=Test Place, Example City');
+  // Wait for the mocked result to appear and click the visible item.
+  const resultItem = page.locator('li:has-text("Test Place, Example City"):visible').first();
+  await expect(resultItem).toBeVisible({ timeout: 10000 });
+  await resultItem.click({ force: true });
 
   // The header should update to show the new coordinates (6 decimals).
   await expect(page.locator('text=40.712800, -74.006000')).toBeVisible();

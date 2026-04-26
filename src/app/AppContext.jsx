@@ -56,7 +56,7 @@ export function AppProvider({ children }) {
 
   const [zenithGold, setZenithGold] = useState(savedState?.wasGeolocated ?? false);
   const [zenithBlue, setZenithBlue] = useState(!!(savedState && !savedState.wasGeolocated));
-  const isGeolocatedRef = useRef(savedState?.wasGeolocated ?? false);
+  const isGeolocatedRef = useRef(false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
     coords, year, month, day, timeMinutes, timezone,
@@ -69,6 +69,7 @@ export function AppProvider({ children }) {
   const [mapIdle, setMapIdle] = useState(false);
   const [overlaysReady, setOverlaysReady] = useState(false);
   const [solarLoaded, setSolarLoaded] = useState(false);
+  const didInitialFitRef = useRef(false);
 
   useEffect(() => {
     // usePersistentState returns `savedState` synchronously; mark as loaded
@@ -104,16 +105,18 @@ export function AppProvider({ children }) {
     setZenithGold(false);
   }, []);
 
-  const handleCenterMap = useCallback((overrideCoords) => {
+  const setActiveZenithColor = useCallback(() => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
+  }, []);
+
+  const fitMapToRadius = useCallback((targetCoords, radius) => {
     const map = mapRef.current;
-    const c = overrideCoords ?? coords;
-    if (!map || !c) return;
-    const r = overlayRadius * 1.35;
-    const latCos = Math.cos((c.lat * Math.PI) / 180);
-    const sw = [c.lng - r / latCos, c.lat - r];
-    const ne = [c.lng + r / latCos, c.lat + r];
+    if (!map || !targetCoords) return;
+    const r = radius * 1.35;
+    const latCos = Math.cos((targetCoords.lat * Math.PI) / 180);
+    const sw = [targetCoords.lng - r / latCos, targetCoords.lat - r];
+    const ne = [targetCoords.lng + r / latCos, targetCoords.lat + r];
     const isMobile = window.innerWidth < LAYOUT.mobileBreakpoint;
     const panelVisibleH = parseInt(
       getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
@@ -121,7 +124,25 @@ export function AppProvider({ children }) {
     );
     const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
     map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
-  }, [coords, overlayRadius]);
+  }, []);
+
+  const handleCenterMap = useCallback((overrideCoords) => {
+    setActiveZenithColor();
+    const c = overrideCoords ?? coords;
+    fitMapToRadius(c, overlayRadius);
+  }, [coords, overlayRadius, fitMapToRadius, setActiveZenithColor]);
+
+  // Fit the map once on startup after first idle. A next-frame refit accounts
+  // for layout-dependent padding (desktop side panel vs mobile bottom sheet).
+  useEffect(() => {
+    if (!mapIdle || didInitialFitRef.current) return;
+    didInitialFitRef.current = true;
+    handleCenterMap();
+    const rafId = window.requestAnimationFrame(() => {
+      handleCenterMap();
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [mapIdle, handleCenterMap]);
 
   const handleZenithHold = useCallback(() => {
     isGeolocatedRef.current = true;
@@ -148,24 +169,11 @@ export function AppProvider({ children }) {
   }, []);
 
   const handleOverlayZoomChange = useCallback((newZoom) => {
-    if (isGeolocatedRef.current) setZenithGold(true);
-    else setZenithBlue(true);
+    setActiveZenithColor();
     setOverlayZoom(newZoom);
-    const map = mapRef.current;
-    if (!map || !coords) return;
     const newRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - newZoom);
-    const r = newRadius * 1.35;
-    const latCos = Math.cos((coords.lat * Math.PI) / 180);
-    const sw = [coords.lng - r / latCos, coords.lat - r];
-    const ne = [coords.lng + r / latCos, coords.lat + r];
-    const isMobile = window.innerWidth < LAYOUT.mobileBreakpoint;
-    const panelVisibleH = parseInt(
-      getComputedStyle(document.documentElement).getPropertyValue('--panel-visible-h') || '0',
-      10,
-    );
-    const padding = getMapPadding({ isMobile, panelVisibleH, panelWidth: LAYOUT.panelWidth });
-    map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
-  }, [coords]);
+    fitMapToRadius(coords, newRadius);
+  }, [coords, fitMapToRadius, setActiveZenithColor]);
 
   const handleDateChange = useCallback((y, m, d) => {
     setYear(y);

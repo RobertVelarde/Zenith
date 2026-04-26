@@ -37,7 +37,7 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 /** Width (px) of the left-docked panel on desktop/tablet. */
-const DESKTOP_PANEL_W = 340;
+const DESKTOP_PANEL_W = 380;
 
 /** Edge margin applied to all four sides of the fitBounds padding. */
 const MARGIN = 24;
@@ -211,7 +211,7 @@ test.describe('Map centering — desktop/tablet @math', () => {
       const padding = { top: MARGIN, right: MARGIN, bottom: MARGIN, left: DESKTOP_PANEL_W + MARGIN };
       const { x, y } = remainingCenter(vp.width, vp.height, padding);
 
-      // (A) Horizontal centre is shifted right by the 340 px panel.
+      // (A) Horizontal centre is shifted right by the panel width.
       expect(x).toBeCloseTo((vp.width + DESKTOP_PANEL_W) / 2, 5);
       // (B) Vertical centre is at the midpoint (symmetric top/bottom padding).
       expect(y).toBeCloseTo(vp.height / 2, 5);
