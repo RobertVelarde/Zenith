@@ -30,9 +30,11 @@ export default function MapView({
   onUserInteraction,
   onMapIdle, // callback when the map first becomes idle
   onOverlaysReady, // callback when overlays have been initially pushed
+  onMapUnavailable, // callback when the map cannot finish initial readiness
 }) {
   const containerRef = useRef(null);
   const markerRef = useRef(null);
+  const initialMapResolvedRef = useRef(false);
   const { notify } = useNotification();
 
   useMapOverlays(mapRef, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading }, { onInitialReady: onOverlaysReady });
@@ -44,6 +46,29 @@ export default function MapView({
 
   useEffect(() => {
     let map;
+    let initialLoadTimeout;
+
+    const clearInitialLoadTimeout = () => {
+      if (initialLoadTimeout) {
+        window.clearTimeout(initialLoadTimeout);
+        initialLoadTimeout = undefined;
+      }
+    };
+
+    const markMapUnavailable = () => {
+      if (initialMapResolvedRef.current) return;
+      initialMapResolvedRef.current = true;
+      clearInitialLoadTimeout();
+      onMapUnavailable?.();
+    };
+
+    const markMapIdle = () => {
+      if (initialMapResolvedRef.current) return;
+      initialMapResolvedRef.current = true;
+      clearInitialLoadTimeout();
+      onMapIdle?.();
+    };
+
     try {
       map = new mapboxgl.Map({
         container: containerRef.current,
@@ -61,8 +86,14 @@ export default function MapView({
       });
     } catch {
       notify(LABELS.mapLoadFailed, 'error');
+      markMapUnavailable();
       return;
     }
+
+    initialLoadTimeout = window.setTimeout(() => {
+      notify(LABELS.mapLoadFailed, 'error');
+      markMapUnavailable();
+    }, 12000);
 
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -74,9 +105,7 @@ export default function MapView({
     });
 
     // Fire once when the map finishes its initial load/idle cycle.
-    map.once('idle', () => {
-      onMapIdle?.();
-    });
+    map.once('idle', markMapIdle);
 
     map.on('click', (e) => {
       onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
@@ -95,6 +124,7 @@ export default function MapView({
     map.on('error', (e) => {
       if (e?.error?.status !== 404) {
         console.error('[MapView]', e.error?.message || e);
+        markMapUnavailable();
       }
     });
 
@@ -103,6 +133,7 @@ export default function MapView({
       .addTo(map);
 
     return () => {
+      clearInitialLoadTimeout();
       map.off('movestart', emitInteraction);
       map.off('dragstart', emitInteraction);
       if (container) container.removeEventListener('wheel', wheelHandler);

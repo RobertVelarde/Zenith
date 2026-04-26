@@ -142,6 +142,11 @@ export function AppProvider({ children }) {
 
   const handleZenithTap = useCallback(() => { handleCenterMap(); }, [handleCenterMap]);
 
+  const handleMapUnavailable = useCallback(() => {
+    setMapIdle(true);
+    setOverlaysReady(true);
+  }, []);
+
   const handleOverlayZoomChange = useCallback((newZoom) => {
     if (isGeolocatedRef.current) setZenithGold(true);
     else setZenithBlue(true);
@@ -205,6 +210,7 @@ export function AppProvider({ children }) {
                 onUserInteraction={handleUserInteraction}
                 onMapIdle={() => setMapIdle(true)}
                 onOverlaysReady={() => setOverlaysReady(true)}
+                onMapUnavailable={handleMapUnavailable}
               />
 
               <SidePanel />
