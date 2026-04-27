@@ -408,7 +408,6 @@ export default function useMapOverlays(mapRef, overlayData, opts = {}) {
     const hasZenith = () => zenithBlueRef.current || zenithGoldRef.current;
 
     const beginClickTransition = () => {
-      if (!isMobileViewport()) return;
       mapMovingRef.current = true;
       moveModeRef.current = 'coords-change';
       dynamicVisibleRef.current = false;
