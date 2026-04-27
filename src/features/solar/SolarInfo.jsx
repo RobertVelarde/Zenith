@@ -36,7 +36,7 @@ export default function SolarInfo({ sunData: propSunData } = {}) {
   const dayLength =
     t.sunset && t.sunrise && !isNaN(t.sunset.getTime()) && !isNaN(t.sunrise.getTime())
       ? t.sunset - t.sunrise
-      : null;
+      : t.solarNoon && !isNaN(t.solarNoon.getTime()) ? 86400000 : null;
 
   const srAz = az?.sunrise != null ? ` (${Math.round(az.sunrise)}°)` : '';
   const ssAz = az?.sunset  != null ? ` (${Math.round(az.sunset)}°)`  : '';

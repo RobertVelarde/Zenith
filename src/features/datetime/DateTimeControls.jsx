@@ -141,46 +141,66 @@ function buildYearlyGradient(lat, lng, year) {
  * Timezone-aware: times are converted to the location's local zone so the
  * gradient aligns with the displayed times rather than the browser's clock.
  */
-function buildDayNightGradient(sunTimes, timezone) {
+function buildDayNightGradient(sunTimes, timezone, coords, year, month, day) {
   if (!sunTimes) return SLIDER.trackBg;
 
   const toMin = (d) => dateToMinuteInZone(d, timezone);
+  const normMin = (m) => ((m % 1440) + 1440) % 1440;
+  const pct = (m) => ((normMin(m) / 1440) * 100).toFixed(1) + '%';
 
   const nightEnd  = toMin(sunTimes.nightEnd);
   const nautDawn  = toMin(sunTimes.nauticalDawn);
   const dawn      = toMin(sunTimes.dawn);
   const sunrise   = toMin(sunTimes.sunrise);
+  const solarNoon = toMin(sunTimes.solarNoon);
   const sunset    = toMin(sunTimes.sunset);
   const dusk      = toMin(sunTimes.dusk);
   const nautDusk  = toMin(sunTimes.nauticalDusk);
   const night     = toMin(sunTimes.night);
 
-  const pct = (m) => ((m / 1440) * 100).toFixed(1) + '%';
+  const { night: NIGHT, astro: ASTRO, nautical: NAUT, civil: CIVIL, golden: GOLD, day: DAY } = TWILIGHT_COLORS;
+  const colors = { NIGHT, ASTRO, NAUT, CIVIL, GOLD, DAY };
 
-  if (sunrise == null || sunset == null) {
-    return SLIDER.trackBg;
+  const transitions = [];
+  const addTransition = (time, from, to) => {
+    if (time != null) transitions.push({ time: normMin(time), from, to });
+  };
+
+  addTransition(nightEnd, 'NIGHT', 'ASTRO');
+  addTransition(nautDawn, 'ASTRO', 'NAUT');
+  addTransition(dawn, 'NAUT', 'CIVIL');
+  addTransition(sunrise, 'CIVIL', 'GOLD');
+
+  // Keep a short golden-hour shoulder around sunrise/sunset only when true daylight exists.
+  if (sunrise != null && sunset != null && sunset - sunrise > 60) {
+    addTransition(sunrise + 30, 'GOLD', 'DAY');
+    addTransition(sunset - 30, 'DAY', 'GOLD');
   }
 
-  const stops = [];
-  const { night: NIGHT, astro: ASTRO, nautical: NAUT, civil: CIVIL, golden: GOLD, day: DAY } = TWILIGHT_COLORS;
+  addTransition(sunset, 'GOLD', 'CIVIL');
+  addTransition(dusk, 'CIVIL', 'NAUT');
+  addTransition(nautDusk, 'NAUT', 'ASTRO');
+  addTransition(night, 'ASTRO', 'NIGHT');
 
-  stops.push(`${NIGHT} 0%`);
+  transitions.sort((a, b) => a.time - b.time);
 
-  if (nightEnd != null)  stops.push(`${NIGHT} ${pct(nightEnd)}`, `${ASTRO} ${pct(nightEnd)}`);
-  if (nautDawn != null)  stops.push(`${ASTRO} ${pct(nautDawn)}`, `${NAUT} ${pct(nautDawn)}`);
-  if (dawn != null)      stops.push(`${NAUT} ${pct(dawn)}`, `${CIVIL} ${pct(dawn)}`);
-  if (sunrise != null)   stops.push(`${CIVIL} ${pct(sunrise)}`, `${GOLD} ${pct(sunrise)}`);
+  if (!transitions.length) {
+    if (!coords || year == null || month == null || day == null) return SLIDER.trackBg;
+    const noon = new Date(year, month - 1, day, 12, 0, 0);
+    const altitude = SunCalc.getPosition(noon, coords.lat, coords.lng).altitude;
+    const flat = altitude > 0 ? DAY : NIGHT;
+    return `linear-gradient(to right, ${flat} 0%, ${flat} 100%)`;
+  }
 
-  // Daylight
-  stops.push(`${DAY} ${pct(sunrise + 30)}`);
-  stops.push(`${DAY} ${pct(sunset - 30)}`);
+  const startPhase = transitions[transitions.length - 1].to;
+  const stops = [`${colors[startPhase]} 0%`];
 
-  if (sunset != null)    stops.push(`${GOLD} ${pct(sunset)}`, `${CIVIL} ${pct(sunset)}`);
-  if (dusk != null)      stops.push(`${CIVIL} ${pct(dusk)}`, `${NAUT} ${pct(dusk)}`);
-  if (nautDusk != null)  stops.push(`${NAUT} ${pct(nautDusk)}`, `${ASTRO} ${pct(nautDusk)}`);
-  if (night != null)     stops.push(`${ASTRO} ${pct(night)}`, `${NIGHT} ${pct(night)}`);
+  for (const tr of transitions) {
+    stops.push(`${colors[tr.from]} ${pct(tr.time)}`, `${colors[tr.to]} ${pct(tr.time)}`);
+  }
 
-  stops.push(`${NIGHT} 100%`);
+  const endPhase = transitions[transitions.length - 1].to;
+  stops.push(`${colors[endPhase]} 100%`);
 
   return `linear-gradient(to right, ${stops.join(', ')})`;
 }
@@ -198,7 +218,10 @@ export default function DateTimeControls({
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInYear = isLeap ? 366 : 365;
 
-  const timeGradient = useMemo(() => buildDayNightGradient(sunTimes, timezone), [sunTimes, timezone]);
+  const timeGradient = useMemo(
+    () => buildDayNightGradient(sunTimes, timezone, coords, year, month, day),
+    [sunTimes, timezone, coords, year, month, day],
+  );
 
   const yearGradient = useMemo(
     () => coords ? buildYearlyGradient(coords.lat, coords.lng, year) : SLIDER.trackBg,

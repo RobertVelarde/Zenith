@@ -4,7 +4,7 @@
  * @module components/LunarInfo
  */
 
-import { formatTimeCrossDay } from '../../shared/utils/timezone';
+import { formatTime } from '../../shared/utils/timezone';
 import { getMoonPhaseName } from '../../shared/utils/sunMoonCalc';
 import { LABELS } from '../../config';
 import DataRow from '../../shared/components/DataRow';
@@ -35,10 +35,10 @@ export default function LunarInfo({ moonData: propMoonData } = {}) {
   const az = moonData.eventAzimuths;
 
   const riseStr = t.rise
-    ? formatTimeCrossDay(t.rise, timezone, moonData.riseDay, use24h)
+    ? formatTime(t.rise, timezone, use24h)
     : (t.alwaysUp ? LABELS.alwaysUp : t.alwaysDown ? LABELS.alwaysDown : 'N/A');
   const setStr = t.set
-    ? formatTimeCrossDay(t.set, timezone, moonData.setDay, use24h)
+    ? formatTime(t.set, timezone, use24h)
     : (t.alwaysUp ? LABELS.alwaysUp : t.alwaysDown ? LABELS.alwaysDown : 'N/A');
 
   const riseAz = az?.moonrise != null ? ` (${Math.round(az.moonrise)}°)` : '';

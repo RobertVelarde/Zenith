@@ -45,14 +45,6 @@ export function formatTime(date, tz, use24h = false) {
   }
 }
 
-export function formatTimeCrossDay(date, tz, dayOffset = 0, use24h = false) {
-  if (!date || !tz || isNaN(date.getTime())) return '--:--';
-  const base = formatTime(date, tz, use24h);
-  if (dayOffset === -1) return `−${base}`;
-  if (dayOffset === 1)  return `+${base}`;
-  return base;
-}
-
 export function formatTimeLong(date, tz, use24h = false) {
   if (!date || !tz || isNaN(date.getTime())) return '--:--:--';
   try {

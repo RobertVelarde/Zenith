@@ -1,8 +1,8 @@
 /**
  * @file Sun & Moon calculation wrappers around the `suncalc` library.
  *
- * Provides higher-level data structures (event azimuths, cross-day
- * moonrise/set detection, full-day trajectories) that the rest of the
+ * Provides higher-level data structures (event azimuths and full-day
+ * trajectories) that the rest of the
  * application consumes.
  *
  * @module shared/utils/sunMoonCalc
@@ -35,35 +35,6 @@ const normAz = (rad) => (toDeg(rad) + 180) % 360;
  */
 function safeDate(d) {
   return d && !isNaN(d.getTime()) ? d : null;
-}
-
-/**
- * Searches the previous and next calendar days for a moonrise or moonset
- * that did not occur on `date` — common at high latitudes where the moon
- * may not cross the horizon within a given 24-hour period.
- *
- * @param {Date}   date  - Reference date.
- * @param {number} lat   - Latitude in decimal degrees.
- * @param {number} lng   - Longitude in decimal degrees.
- * @param {'rise'|'set'} field - Which moon event to look up.
- * @returns {{ time: Date|null, day: -1|0|1 }}
- *   `time` is the event Date (or null if not found within ±1 day).
- *   `day` is the offset from `date`: -1 = yesterday, 1 = tomorrow.
- */
-function findCrossDayTime(date, lat, lng, field) {
-  const prevDate = new Date(date);
-  prevDate.setDate(prevDate.getDate() - 1);
-  const prevTimes = SunCalc.getMoonTimes(prevDate, lat, lng);
-  if (prevTimes[field] && safeDate(prevTimes[field])) {
-    return { time: safeDate(prevTimes[field]), day: -1 };
-  }
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + 1);
-  const nextTimes = SunCalc.getMoonTimes(nextDate, lat, lng);
-  if (nextTimes[field] && safeDate(nextTimes[field])) {
-    return { time: safeDate(nextTimes[field]), day: 1 };
-  }
-  return { time: null, day: 0 };
 }
 
 /**
@@ -134,17 +105,11 @@ export function getSunData(date, lat, lng) {
  * Returns moon position, illumination, and rise/set times for the given
  * date and location.
  *
- * Because the moon rises roughly 50 minutes later each day, it frequently
- * rises or sets on an adjacent calendar day. `findCrossDayTime` is used to
- * locate cross-midnight events, and `riseDay` / `setDay` offsets (-1, 0, 1)
- * let the UI annotate times as "yesterday" or "tomorrow" when needed.
- *
  * @param {Date}   date - Reference date (time portion used for position).
  * @param {number} lat  - Latitude in decimal degrees.
  * @param {number} lng  - Longitude in decimal degrees.
  * @returns {{
  *   times: { rise: Date|null, set: Date|null, alwaysUp: boolean, alwaysDown: boolean },
- *   riseDay: number, setDay: number,
  *   eventAzimuths: { moonrise?: number, moonset?: number },
  *   position: { azimuth: number, altitude: number, distance: number },
  *   illumination: { fraction: number, phase: number, angle: number }
@@ -155,17 +120,8 @@ export function getMoonData(date, lat, lng) {
   const illum = SunCalc.getMoonIllumination(date);
 
   const todayTimes = SunCalc.getMoonTimes(date, lat, lng);
-  let rise = todayTimes.rise ? safeDate(todayTimes.rise) : null;
-  let set = todayTimes.set ? safeDate(todayTimes.set) : null;
-  let riseDay = 0;
-  let setDay = 0;
-
-  if (!rise) {
-    ({ time: rise, day: riseDay } = findCrossDayTime(date, lat, lng, 'rise'));
-  }
-  if (!set) {
-    ({ time: set, day: setDay } = findCrossDayTime(date, lat, lng, 'set'));
-  }
+  const rise = todayTimes.rise ? safeDate(todayTimes.rise) : null;
+  const set = todayTimes.set ? safeDate(todayTimes.set) : null;
 
   const eventAzimuths = {};
   if (rise) {
@@ -179,8 +135,6 @@ export function getMoonData(date, lat, lng) {
 
   return {
     times: { rise, set, alwaysUp: todayTimes.alwaysUp, alwaysDown: todayTimes.alwaysDown },
-    riseDay,
-    setDay,
     eventAzimuths,
     position: {
       azimuth: normAz(pos.azimuth),

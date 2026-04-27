@@ -123,10 +123,6 @@ function setStaticOverlayVisibility(map, visible) {
   setLayerGroupVisibility(map, OVERLAY_STATIC_LAYER_OPACITY, visible);
 }
 
-function isMobileViewport() {
-  return typeof window !== 'undefined' && window.innerWidth < LAYOUT.mobileBreakpoint;
-}
-
 function setSourceData(map, id, data) {
   const src = map.getSource(id);
   if (src) src.setData(data);
@@ -420,14 +416,6 @@ export default function useMapOverlays(mapRef, overlayData, opts = {}) {
       mapMovingRef.current = true;
 
       if (!hasZenith()) {
-        dynamicVisibleRef.current = false;
-        staticVisibleRef.current = false;
-        setDynamicOverlayVisibility(map, false);
-        setStaticOverlayVisibility(map, false);
-        return;
-      }
-
-      if (!isMobileViewport()) {
         dynamicVisibleRef.current = false;
         staticVisibleRef.current = false;
         setDynamicOverlayVisibility(map, false);
