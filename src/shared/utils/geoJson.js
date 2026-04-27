@@ -11,20 +11,24 @@
 import { OVERLAY_RADIUS } from '../../config';
 
 // Scale factors relative to the overlay radius (r)
-const SCALE_EVENT_LINE   = 1.3;   // sunrise/set, moonrise/set, heading lines
-const SCALE_CURRENT_SUN  = 1.15;  // current sun direction line
-const SCALE_SOLAR_NOON   = 0.9;   // solar noon line (slightly shorter)
-const SCALE_MOON         = 0.85;  // moon arc + point + direction line
+const SCALE_EVENT_LINE   = 1.0;   // sunrise/set, moonrise/set, heading lines
+const SCALE_CURRENT_SUN  = 1.0;  // current sun direction line
+const SCALE_CURRENT_MOON = 1.0;  // current moon direction line
+const SCALE_SOLAR_NOON   = 1.0;   // solar noon line (slightly shorter)
+const SCALE_MOON         = 1.0;  // moon arc + point + direction line
+
+const LINE_START_OFFSET = 0.0; // factor to start lines slightly away from center for better visibility
+const LINE_END_OFFSET = 1.075; // factor to extend lines beyond the arc radius for better visibility
 
 // Azimuth discontinuity guard: bearing diff above this is treated as a wrap
 const AZ_JUMP_THRESHOLD = 100;
 
-function project(lat, lng, bearingDeg, dist) {
+function project(lat, lng, bearingDeg, dist, radiusOffset = 0) {
   const rad = (bearingDeg * Math.PI) / 180;
   const latRad = (lat * Math.PI) / 180;
   return [
-    lng + (dist * Math.sin(rad)) / Math.cos(latRad),
-    lat + dist * Math.cos(rad),
+    lng + ((dist + radiusOffset) * Math.sin(rad)) / Math.cos(latRad),
+    lat + (dist + radiusOffset) * Math.cos(rad),
   ];
 }
 
@@ -34,24 +38,33 @@ function buildArcSegments(trajectory, lat, lng, r) {
   let coords = [];
   let prevAbove = trajectory[0].altitudeDeg > 0;
   let prevAz = trajectory[0].azimuthDeg;
+  
   for (const pt of trajectory) {
     const isAbove = pt.altitudeDeg > 0;
     const azDiff = Math.abs(pt.azimuthDeg - prevAz);
     const jump = Math.min(azDiff, 360 - azDiff) > AZ_JUMP_THRESHOLD;
+    
     if ((isAbove !== prevAbove || jump) && coords.length >= 2) {
       segments.push({ above: prevAbove, coords });
       coords = [];
     }
-    coords.push(project(lat, lng, pt.azimuthDeg, r));
+    
+    const altitudeRad = pt.altitudeDeg * (Math.PI / 180);
+    const scaledR = r * Math.cos(altitudeRad);
+    coords.push(project(lat, lng, pt.azimuthDeg, scaledR));
+    
     prevAbove = isAbove;
     prevAz = pt.azimuthDeg;
   }
+  
   if (coords.length >= 2) segments.push({ above: prevAbove, coords });
   return segments;
 }
 
 export function sunArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   const segments = buildArcSegments(trajectory, lat, lng, r);
+
+  // Sun path
   return {
     type: 'FeatureCollection',
     features: segments.map(({ above, coords }) => ({
@@ -67,16 +80,22 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   const feats = [];
   const alt = sunData.position.altitude;
   const belowHorizon = alt < 0;
+  const altitudeRad = alt * (Math.PI / 180);
+  const scaledR = r * Math.cos(altitudeRad);
 
   const add = (type, az, dist = r * SCALE_EVENT_LINE) => {
     if (az == null) return;
     feats.push({
       type: 'Feature',
       properties: { kind: type },
-      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az, dist)] },
+      geometry: { type: 'LineString', coordinates: [
+        project(lat, lng, az, dist), 
+        project(lat, lng, az, r * LINE_END_OFFSET),
+      ] },
     });
   };
 
+  // Current sun direction line
   feats.push({
     type: 'Feature',
     properties: {
@@ -85,20 +104,24 @@ export function sunLinesGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
     },
     geometry: {
       type: 'LineString',
-      coordinates: [c, project(lat, lng, sunData.position.azimuth, r * SCALE_CURRENT_SUN)],
+      coordinates: [
+        project(lat, lng, sunData.position.azimuth, r),
+        project(lat, lng, sunData.position.azimuth, r * LINE_END_OFFSET),
+      ],
     },
   });
 
   add('sunrise-line', sunData.eventAzimuths.sunrise);
   add('sunset-line', sunData.eventAzimuths.sunset);
-  add('solarnoon-line', sunData.eventAzimuths.solarNoon, r * SCALE_SOLAR_NOON);
 
   return { type: 'FeatureCollection', features: feats };
 }
 
 export function sunPointGeoJSON(sunData, lat, lng, r = OVERLAY_RADIUS) {
   const alt = sunData.position.altitude;
-  const coord = project(lat, lng, sunData.position.azimuth, r);
+  const altitudeRad = alt * (Math.PI / 180);
+  const scaledR = r * Math.cos(altitudeRad);
+  const coord = project(lat, lng, sunData.position.azimuth, scaledR);
   return {
     type: 'FeatureCollection',
     features: [
@@ -123,41 +146,63 @@ export function moonArcGeoJSON(trajectory, lat, lng, r = OVERLAY_RADIUS) {
   };
 }
 
-export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
+export function moonLinesGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
   const c = [lng, lat];
+  const feats = [];
   const alt = moonData.position.altitude;
   const belowHorizon = alt < 0;
-  const coord = project(lat, lng, moonData.position.azimuth, r * SCALE_MOON);
-  const features = [
-    {
-      type: 'Feature',
-      properties: { kind: belowHorizon ? 'moon-line-below' : 'moon-line', altitude: alt },
-      geometry: { type: 'LineString', coordinates: [c, coord] },
-    },
-    {
-      type: 'Feature',
-      properties: { kind: belowHorizon ? 'moon-point-below' : 'moon-point', altitude: alt },
-      geometry: { type: 'Point', coordinates: coord },
-    },
-  ];
+  const altitudeRad = alt * (Math.PI / 180);
+  const scaledR = r * Math.cos(altitudeRad);
 
-  const az = moonData.eventAzimuths;
-  if (az?.moonrise != null) {
-    features.push({
+  const add = (type, az, dist = r * SCALE_EVENT_LINE) => {
+    if (az == null) return;
+    feats.push({
       type: 'Feature',
-      properties: { kind: 'moonrise-line' },
-      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonrise, r * SCALE_EVENT_LINE)] },
+      properties: { kind: type },
+      geometry: { type: 'LineString', coordinates: [
+        project(lat, lng, az, dist), 
+        project(lat, lng, az, r * LINE_END_OFFSET),
+      ] },
     });
-  }
-  if (az?.moonset != null) {
-    features.push({
-      type: 'Feature',
-      properties: { kind: 'moonset-line' },
-      geometry: { type: 'LineString', coordinates: [c, project(lat, lng, az.moonset, r * SCALE_EVENT_LINE)] },
-    });
-  }
+  };
 
-  return { type: 'FeatureCollection', features };
+  // Current moon direction line
+  feats.push({
+    type: 'Feature',
+    properties: {
+      kind: belowHorizon ? 'moon-current-below' : 'moon-current',
+      altitude: alt,
+    },
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        project(lat, lng, moonData.position.azimuth, r),
+        project(lat, lng, moonData.position.azimuth, r * LINE_END_OFFSET),
+      ],
+    },
+  });
+
+  add('moonrise-line', moonData.eventAzimuths.moonrise);
+  add('moonset-line', moonData.eventAzimuths.moonset);
+
+  return { type: 'FeatureCollection', features: feats };
+}
+
+export function moonPointGeoJSON(moonData, lat, lng, r = OVERLAY_RADIUS) {
+  const alt = moonData.position.altitude;
+  const altitudeRad = alt * (Math.PI / 180);
+  const scaledR = r * Math.cos(altitudeRad) * SCALE_MOON;
+  const coord = project(lat, lng, moonData.position.azimuth, scaledR);
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { kind: alt >= 0 ? 'moon-point' : 'moon-point-below', altitude: alt },
+        geometry: { type: 'Point', coordinates: coord },
+      },
+    ],
+  };
 }
 
 export function headingLineGeoJSON(heading, lat, lng, r = OVERLAY_RADIUS) {

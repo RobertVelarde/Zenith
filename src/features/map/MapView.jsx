@@ -13,8 +13,14 @@ import {
 } from '../../config';
 import { useNotification } from '../../shared/hooks/useNotification';
 import useMapOverlays from './useMapOverlays';
+import darkMarkerImageUrl from '../../assets/markers/darkMarker.png';
+import lightMarkerImageUrl from '../../assets/markers/lightMarker.png';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
+
+function getMarkerImageUrl(mapStyle) {
+  return mapStyle === 'light' ? lightMarkerImageUrl : darkMarkerImageUrl;
+}
 
 export default function MapView({
   coords,
@@ -25,6 +31,8 @@ export default function MapView({
   moonData,
   overlayRadius,
   heading,
+  zenithBlue,
+  zenithGold,
   onMapClick,
   mapRef,
   onUserInteraction,
@@ -37,7 +45,11 @@ export default function MapView({
   const initialMapResolvedRef = useRef(false);
   const { notify } = useNotification();
 
-  useMapOverlays(mapRef, { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading }, { onInitialReady: onOverlaysReady });
+  useMapOverlays(
+    mapRef,
+    { coords, sunTrajectory, moonTrajectory, sunData, moonData, overlayRadius, heading },
+    { onInitialReady: onOverlaysReady, zenithBlue, zenithGold, mapStyle },
+  );
 
   const onUserInteractionRef = useRef(onUserInteraction);
   useEffect(() => { onUserInteractionRef.current = onUserInteraction; }, [onUserInteraction]);
@@ -112,10 +124,12 @@ export default function MapView({
     });
 
     const emitInteraction = (ev) => {
-      if (!ev || !ev.originalEvent) return;
+      // Ignore programmatic move events (e.g., flyTo) that have no original DOM event
+      // or if a click (already handled separately). We only want to trigger onUserInteraction for user-initiated map movements.
+      if (!ev || !ev.originalEvent || ev.originalEvent.type === 'click') return;
       onUserInteractionRef.current?.();
     };
-    map.on('movestart', emitInteraction);
+    //map.on('movestart', emitInteraction);
     map.on('dragstart', emitInteraction);
     const container = containerRef.current;
     const wheelHandler = () => { onUserInteractionRef.current?.(); };
@@ -128,7 +142,18 @@ export default function MapView({
       }
     });
 
-    markerRef.current = new mapboxgl.Marker({ color: MARKER_COLOR })
+    const imageMarker = document.createElement('div');
+    imageMarker.className = 'custom-image-marker';
+    imageMarker.style.width = '20px';
+    imageMarker.style.height = '20px';
+    imageMarker.style.backgroundImage = `url(${getMarkerImageUrl(mapStyle)})`;
+    imageMarker.style.backgroundSize = 'contain';
+    imageMarker.style.backgroundRepeat = 'no-repeat';
+
+    markerRef.current = new mapboxgl.Marker({
+        element: imageMarker,
+        anchor: 'center'
+      })
       .setLngLat([coords.lng, coords.lat])
       .addTo(map);
 
@@ -155,6 +180,12 @@ export default function MapView({
     if (appliedStyleRef.current === newStyle) return;
     appliedStyleRef.current = newStyle;
     map.setStyle(newStyle);
+  }, [mapStyle]);
+
+  useEffect(() => {
+    const markerElement = markerRef.current?.getElement();
+    if (!markerElement) return;
+    markerElement.style.backgroundImage = `url(${getMarkerImageUrl(mapStyle)})`;
   }, [mapStyle]);
 
   return (

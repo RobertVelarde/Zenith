@@ -1,5 +1,5 @@
 /**
- * @file Collapsible "Advanced" panel — twilight times, elevation, day-length
+ * @file Collapsible "Advanced" panel — twilight times, day-length
  *       breakdown, and time-format toggle.
  *
  * @module components/AdvancedPanel
@@ -17,18 +17,16 @@ import { useAppState } from '../../app/AppContext';
  * @param {Object} props
  * @param {Object}   props.sunData    - Result from `getSunData()`.
  * @param {string}   props.timezone   - IANA timezone string.
- * @param {number|null} props.elevation - Elevation in metres.
  * @param {boolean}  props.isLight    - Light-theme flag.
  * @param {boolean}  props.use24h     - 24-hour format flag.
  * @param {Function} props.onToggle24h - Toggle between 12/24h.
  */
-export default function AdvancedPanel({ sunData: propSunData, elevation: propElevation } = {}) {
+export default function AdvancedPanel({ sunData: propSunData } = {}) {
   const [open, setOpen] = useState(false);
   const { isLight } = useTheme();
   const { fmt, timezone } = useTimeFormat();
-  const { sunData: ctxSunData, elevation: ctxElevation } = useAppState() || {};
+  const { sunData: ctxSunData } = useAppState() || {};
   const sunData = ctxSunData ?? propSunData;
-  const elevation = ctxElevation ?? propElevation;
 
   if (!sunData || !timezone) return null;
 
@@ -55,10 +53,6 @@ export default function AdvancedPanel({ sunData: propSunData, elevation: propEle
 
       {open && (
         <div className="space-y-0.5 pt-1 animate-in fade-in">
-          {elevation != null && (
-            <DataRow label={LABELS.elevation} value={`${elevation.toFixed(0)} m`} isLight={isLight} />
-          )}
-
           <div className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-gray-600'} mt-2 mb-0.5`}>{LABELS.civilTwilight}</div>
           <DataRow label={LABELS.dawn} value={fmt(t.dawn)} isLight={isLight} />
           <DataRow label={LABELS.dusk} value={fmt(t.dusk)} isLight={isLight} />

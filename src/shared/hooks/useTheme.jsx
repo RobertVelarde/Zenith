@@ -1,9 +1,8 @@
 /**
  * @file ThemeContext — centralizes dark/light/satellite theme state.
  *
- * ThemeProvider derives `isDark` and `isSatellite` synchronously from the
- * `mapStyle` prop (owned by App), eliminating the one-render desync that
- * existed when SidePanel had to sync local state from the prop via useEffect.
+ * ThemeProvider derives theme flags from separate base-theme and satellite
+ * props so the settings remain independent.
  *
  * @module hooks/useTheme
  */
@@ -16,13 +15,21 @@ const ThemeContext = createContext(null);
  * Provides derived theme values to the component tree.
  *
  * @param {Object}   props
- * @param {string}   props.mapStyle      - 'dark' | 'light' | 'satellite'
- * @param {Function} props.onStyleChange - Setter for mapStyle (owned by App).
+ * @param {string}   props.baseMapStyle      - 'dark' | 'light'
+ * @param {boolean}  props.satelliteEnabled  - Whether satellite mode is active
+ * @param {Function} props.onBaseStyleChange - Setter for the base theme
+ * @param {Function} props.onSatelliteChange - Setter for satellite mode
  * @param {React.ReactNode} props.children
  */
-export function ThemeProvider({ mapStyle, onStyleChange, children }) {
-  const isDark      = mapStyle !== 'light';
-  const isSatellite = mapStyle === 'satellite';
+export function ThemeProvider({
+  baseMapStyle,
+  satelliteEnabled,
+  onBaseStyleChange,
+  onSatelliteChange,
+  children,
+}) {
+  const isDark      = baseMapStyle !== 'light';
+  const isSatellite = satelliteEnabled;
   const isLight     = !isDark;
   const glassClass  = isLight ? 'glass-light' : 'glass';
   const textPrimary = isLight ? 'text-slate-900' : 'text-white';
@@ -35,12 +42,12 @@ export function ThemeProvider({ mapStyle, onStyleChange, children }) {
   }, [isLight]);
 
   const setIsDark = useCallback((next) => {
-    if (!isSatellite) onStyleChange(next ? 'dark' : 'light');
-  }, [isSatellite, onStyleChange]);
+    onBaseStyleChange(next ? 'dark' : 'light');
+  }, [onBaseStyleChange]);
 
   const setIsSatellite = useCallback((next) => {
-    onStyleChange(next ? 'satellite' : isDark ? 'dark' : 'light');
-  }, [isDark, onStyleChange]);
+    onSatelliteChange(next);
+  }, [onSatelliteChange]);
 
   const value = useMemo(() => ({
     isDark, isLight, isSatellite, glassClass, textPrimary, borderColor,

@@ -45,7 +45,7 @@ export default function PanelScrollBody({
 }) {
   const { isLight, borderColor } = useTheme();
   const { timezone, use24h, setUse24h } = useTimeFormat();
-  const { sunData, moonData, year, month, day, overlayZoom, timeMinutes, elevation, coords } = useAppState();
+  const { sunData, moonData, year, month, day, overlayZoom, timeMinutes, coords } = useAppState();
   const { handleOverlayZoomChange, handleDateChange, setTimeMinutes } = useAppDispatch();
   return (
     <div
@@ -63,7 +63,7 @@ export default function PanelScrollBody({
       }}
     >
       {/* Pinned section duplicate — always visible in the scroll body */}
-      <div className={`pb-3`}>
+      <div>
         <PinnedSection
           onScrollToSolar={onScrollToSolar}
           onScrollToLunar={onScrollToLunar}

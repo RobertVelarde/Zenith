@@ -35,13 +35,11 @@ export function useGeoSearch({ debounceMs = API.searchDebounce } = {}) {
         const encoded = encodeURIComponent(debouncedQuery);
         const url = `${API.geocodingUrl}/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=${API.geocodingLimit}`;
         const res = await fetch(url, { signal: ac.signal });
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.features || []);
-          setIsOpen(true);
-        } else {
-          notify(LABELS.geocodingFailed, 'warn');
-        }
+        if (!res.ok) throw new Error('Geocoding API error');
+
+        const data = await res.json();
+        setResults(data.features || []);
+        setIsOpen(true);
       } catch (err) {
         if (err.name !== 'AbortError') {
           notify(LABELS.geocodingFailed, 'warn');

@@ -18,6 +18,13 @@ import { useTheme } from '../../shared/hooks/useTheme';
 import { useTimeFormat } from '../../shared/hooks/useTimeFormat';
 import { useAppState, useAppDispatch } from '../../app/AppContext';
 
+const getZoomLabel = (zoom) => {
+  const metersPerPixel = 156543 / Math.pow(2, zoom);
+  if (metersPerPixel >= 1000) return `${(metersPerPixel / 1000).toFixed(1)} km/px`;
+  if (metersPerPixel < 1) return `${(metersPerPixel * 100).toFixed(0)} cm/px`;
+  return `${metersPerPixel.toFixed(1)} m/px`;
+};
+
 export default function PinnedSection({ onScrollToSolar, onScrollToLunar }) {
   const { isLight, borderColor } = useTheme();
   const { fmt } = useTimeFormat();
@@ -84,6 +91,7 @@ export default function PinnedSection({ onScrollToSolar, onScrollToLunar }) {
           <label className={`text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>
             Zoom Level
           </label>
+          <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{overlayZoom}</span>
         </div>
         <input
           type="range"

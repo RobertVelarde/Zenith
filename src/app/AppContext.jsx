@@ -37,25 +37,49 @@ function currentMinutes() {
 export function AppProvider({ children }) {
   const now = new Date();
   const { savedState, persist } = usePersistentState(800);
+  const initialBaseMapStyle = savedState?.baseMapStyle ?? (savedState?.mapStyle === 'light' ? 'light' : 'dark');
+  const initialSatelliteEnabled = savedState?.satelliteEnabled ?? savedState?.mapStyle === 'satellite';
 
   const [coords, setCoords] = useState(savedState?.coords ?? DEFAULT_COORDS);
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [day, setDay] = useState(now.getDate());
   const [timeMinutes, setTimeMinutes] = useState(currentMinutes());
-  const [mapStyle, setMapStyle] = useState(savedState?.mapStyle ?? 'dark');
+  const [baseMapStyle, setBaseMapStyle] = useState(initialBaseMapStyle);
+  const [satelliteEnabled, setSatelliteEnabled] = useState(initialSatelliteEnabled);
   const [panelOpen, setPanelOpen] = useState(true);
   const [overlayZoom, setOverlayZoom] = useState(savedState?.overlayZoom ?? DEFAULT_ZOOM);
   const [use24h, setUse24h] = useState(savedState?.use24h ?? false);
 
+  const mapStyle = satelliteEnabled ? 'satellite' : baseMapStyle;
+
+  const setMapStyle = useCallback((nextMapStyle) => {
+    const resolvedMapStyle = typeof nextMapStyle === 'function' ? nextMapStyle(mapStyle) : nextMapStyle;
+
+    if (resolvedMapStyle === 'satellite') {
+      setSatelliteEnabled(true);
+      return;
+    }
+
+    if (resolvedMapStyle === 'light' || resolvedMapStyle === 'dark') {
+      setBaseMapStyle(resolvedMapStyle);
+      setSatelliteEnabled(false);
+    }
+  }, [mapStyle]);
+
   const overlayRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - overlayZoom);
   const mapRef = useRef(null);
   const debouncedCoords = useDebounce(coords, API.coordDebounce);
-  const { timezone, elevation } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
+  const { timezone } = useLocationMeta(debouncedCoords.lat, debouncedCoords.lng);
   const { geolocate } = useGeolocation(setCoords);
 
-  const [zenithGold, setZenithGold] = useState(savedState?.wasGeolocated ?? false);
-  const [zenithBlue, setZenithBlue] = useState(!!(savedState && !savedState.wasGeolocated));
+  const [zenithGold, setZenithGold] = useState(false);
+  const [zenithBlue, setZenithBlue] = useState(true);
+  // log each time zenithBlue or zenithGold changes
+  useEffect(() => {
+    console.log('Zenith color state changed:', { zenithBlue, zenithGold });
+  }, [zenithBlue, zenithGold]);
+
   const isGeolocatedRef = useRef(false);
 
   const { sunData, moonData, sunTrajectory, moonTrajectory } = useSolarData(
@@ -78,13 +102,13 @@ export function AppProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    persist({ coords, overlayZoom, mapStyle, use24h, wasGeolocated: isGeolocatedRef.current });
-  }, [coords, overlayZoom, mapStyle, use24h, persist]);
+    persist({ coords, overlayZoom, baseMapStyle, satelliteEnabled, use24h, timezone });
+  }, [coords, overlayZoom, baseMapStyle, satelliteEnabled, use24h, timezone, persist]);
 
-  // Consider solar/moon data "loaded" when a timezone has been found or a
-  // short timeout elapsed (so the splash doesn't hang indefinitely).
+  // Consider solar/moon data "loaded" when there is a solar noon time
   useEffect(() => {
-    if (timezone !== null) {
+    const temp = timezone;
+    if (timezone != null) {
       setSolarLoaded(true);
       return;
     }
@@ -92,23 +116,25 @@ export function AppProvider({ children }) {
     return () => clearTimeout(t);
   }, [timezone, sunData, moonData]);
 
-  const handleMapClick = useCallback((c) => {
-    setCoords(c);
-    isGeolocatedRef.current = false;
-    setZenithGold(false);
-    setZenithBlue(true);
-    mapRef.current?.flyTo({ center: [c.lng, c.lat], duration: TRANSITIONS.clickFlyTo });
-  }, []);
-
   const handleUserInteraction = useCallback(() => {
+    console.log('handleUserInteraction', 'zenithBlue:', zenithBlue, 'to false. zenithGold:', zenithGold, 'to false.');
     setZenithBlue(false);
     setZenithGold(false);
-  }, []);
+  }, [zenithBlue, setZenithBlue, zenithGold, setZenithGold]);
 
   const setActiveZenithColor = useCallback(() => {
-    if (isGeolocatedRef.current) setZenithGold(true);
-    else setZenithBlue(true);
-  }, []);
+    console.log('setActiveZenithColor before modification', 'zenithBlue:', zenithBlue, 'zenithGold:', zenithGold);
+    if (isGeolocatedRef.current)
+    {
+      setZenithGold(true);
+      setZenithBlue(false);
+    }
+    else {
+      setZenithBlue(true);
+      setZenithGold(false);
+    }
+    console.log('setActiveZenithColor after modification', 'zenithBlue:', zenithBlue, 'zenithGold:', zenithGold);
+  }, [zenithBlue, setZenithBlue, zenithGold, setZenithGold]);
 
   const fitMapToRadius = useCallback((targetCoords, radius) => {
     const map = mapRef.current;
@@ -126,23 +152,26 @@ export function AppProvider({ children }) {
     map.fitBounds([sw, ne], { padding, duration: TRANSITIONS.flyToDuration });
   }, []);
 
+  const handleMapUnavailable = useCallback(() => {
+    setMapIdle(true);
+    setOverlaysReady(true);
+  }, []);
+
+  const handleOverlayZoomChange = useCallback((newZoom) => {
+    setActiveZenithColor();
+    setOverlayZoom(newZoom);
+    const newRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - newZoom);
+    fitMapToRadius(coords, newRadius);
+    console.log('handleOverlayZoomChange called with newZoom:', newZoom, 'calculated newRadius:', newRadius);
+  }, [coords, setOverlayZoom, fitMapToRadius, setActiveZenithColor]);
+
   const handleCenterMap = useCallback((overrideCoords) => {
     setActiveZenithColor();
     const c = overrideCoords ?? coords;
-    fitMapToRadius(c, overlayRadius);
-  }, [coords, overlayRadius, fitMapToRadius, setActiveZenithColor]);
-
-  // Fit the map once on startup after first idle. A next-frame refit accounts
-  // for layout-dependent padding (desktop side panel vs mobile bottom sheet).
-  useEffect(() => {
-    if (!mapIdle || didInitialFitRef.current) return;
-    didInitialFitRef.current = true;
-    handleCenterMap();
-    const rafId = window.requestAnimationFrame(() => {
-      handleCenterMap();
-    });
-    return () => window.cancelAnimationFrame(rafId);
-  }, [mapIdle, handleCenterMap]);
+    const radius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - overlayZoom);
+    fitMapToRadius(c, radius);
+    console.log('handleCenterMap called with coords:', c, 'overlayZoom:', overlayZoom, 'calculated radius:', radius);
+  }, [coords, fitMapToRadius, overlayZoom, setActiveZenithColor]);
 
   const handleZenithHold = useCallback(() => {
     isGeolocatedRef.current = true;
@@ -157,23 +186,19 @@ export function AppProvider({ children }) {
   const handleCoordsChange = useCallback((c) => {
     setCoords(c);
     isGeolocatedRef.current = false;
-    setZenithGold(false);
-    handleCenterMap(c);
-  }, [handleCenterMap]);
+  }, [setCoords]);
 
-  const handleZenithTap = useCallback(() => { handleCenterMap(); }, [handleCenterMap]);
+  const handleZenithTap = useCallback(() => { 
+    if (!zenithBlue && !zenithGold) {
+      handleCenterMap(); 
+    }
+  }, [handleCenterMap, zenithBlue, zenithGold]);
 
-  const handleMapUnavailable = useCallback(() => {
-    setMapIdle(true);
-    setOverlaysReady(true);
-  }, []);
-
-  const handleOverlayZoomChange = useCallback((newZoom) => {
+  useEffect(() => {
     setActiveZenithColor();
-    setOverlayZoom(newZoom);
-    const newRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - newZoom);
+    const newRadius = OVERLAY_RADIUS * Math.pow(2, DEFAULT_ZOOM - overlayZoom);
     fitMapToRadius(coords, newRadius);
-  }, [coords, fitMapToRadius, setActiveZenithColor]);
+  }, [coords, overlayZoom]);
 
   const handleDateChange = useCallback((y, m, d) => {
     setYear(y);
@@ -181,9 +206,25 @@ export function AppProvider({ children }) {
     setDay(d);
   }, []);
 
+  const handleMapClick = useCallback((c) => {
+    setCoords(c);
+  }, [setCoords]);
+
+  // Fit the map once on startup after first idle. A next-frame refit accounts
+  // for layout-dependent padding (desktop side panel vs mobile bottom sheet).
+  useEffect(() => {
+    if (!mapIdle || didInitialFitRef.current) return;
+    didInitialFitRef.current = true;
+    handleCenterMap();
+    const rafId = window.requestAnimationFrame(() => {
+      handleCenterMap();
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [mapIdle, handleCenterMap]);
+
   const state = {
     coords, year, month, day, timeMinutes, mapStyle, panelOpen, overlayZoom, use24h,
-    overlayRadius, mapRef, timezone, elevation, sunData, moonData, sunTrajectory, moonTrajectory,
+    overlayRadius, mapRef, timezone, sunData, moonData, sunTrajectory, moonTrajectory,
     heading, zenithGold, zenithBlue,
   };
 
@@ -197,7 +238,12 @@ export function AppProvider({ children }) {
   return (
     <AppStateContext.Provider value={state}>
       <AppDispatchContext.Provider value={dispatch}>
-        <ThemeProvider mapStyle={mapStyle} onStyleChange={setMapStyle}>
+        <ThemeProvider
+          baseMapStyle={baseMapStyle}
+          satelliteEnabled={satelliteEnabled}
+          onBaseStyleChange={setBaseMapStyle}
+          onSatelliteChange={setSatelliteEnabled}
+        >
           <TimeFormatProvider timezone={timezone} use24h={use24h} setUse24h={setUse24h}>
             <div className="app-root relative w-screen overflow-hidden">
               <LoadingScreen
@@ -213,6 +259,8 @@ export function AppProvider({ children }) {
                 moonData={moonData}
                 overlayRadius={overlayRadius}
                 heading={heading}
+                zenithBlue={zenithBlue}
+                zenithGold={zenithGold}
                 onMapClick={handleMapClick}
                 mapRef={mapRef}
                 onUserInteraction={handleUserInteraction}

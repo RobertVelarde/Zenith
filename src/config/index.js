@@ -30,43 +30,63 @@ export const MAP_STYLES = {
 };
 
 export const DEFAULT_COORDS = { lat: 40.7128, lng: -74.006 }; // New York City
-export const DEFAULT_ZOOM = 13;
+export const DEFAULT_ZOOM = 13.000;
 export const OVERLAY_RADIUS = 0.004; // degrees (~400 m) for sun/moon arcs
 
 /** Overlay zoom slider bounds and step. */
-export const OVERLAY_ZOOM = { min: 9, max: 17, step: 0.01 };
+export const OVERLAY_ZOOM = { min: 9, max: 17, step: 0.001 };
 
 /** Map layer styles keyed by layer ID. */
 export const MAP_LAYER_STYLES = {
   // Sun arc — above horizon
-  sunArcAbove: { color: '#fbbf24', width: 3, opacity: 0.85 },
+  sunArcAbove: { color: '#fbbf24', width: 3, opacity: 1 },
   // Sun arc — below horizon
-  sunArcBelow: { color: '#92400e', width: 2, opacity: 0.4, dasharray: [4, 4] },
+  sunArcBelow: { color: '#92400e', width: 3, opacity: 1, dasharray: [4, 0] },
 
   // Sun direction lines
-  sunriseLine:      { color: '#fb923c', width: 2, opacity: 0.9 },
-  sunsetLine:       { color: '#f87171', width: 2, opacity: 0.9 },
-  solarNoonLine:    { color: '#fde68a', width: 1.5, opacity: 0.6, dasharray: [3, 3] },
-  sunCurrentLine:   { color: '#facc15', width: 3, opacity: 1 },
-  sunCurrentBelow:  { color: '#b45309', width: 2, opacity: 0.4, dasharray: [4, 3] },
+  sunriseLine:      { color: '#fb923c', width: 2, opacity: 1 },
+  sunsetLine:       { color: '#f87171', width: 2, opacity: 1 },
+  solarNoonLine:    { color: '#fde68a', width: 1.5, opacity: 1, dasharray: [3, 0] },
+  sunCurrentLine:   { color: '#facc15', width: 2, opacity: 1 },
+  sunCurrentBelow:  { color: '#b45309', width: 2, opacity: 1, dasharray: [4, 0] },
 
   // Sun point
-  sunPoint:      { color: '#facc15', radius: 8, strokeWidth: 2, strokeColor: '#ffffff', opacity: 0.95 },
-  sunPointBelow: { color: '#b45309', radius: 6, strokeWidth: 1.5, strokeColor: '#78350f', opacity: 0.35 },
+  sunPoint:      { color: '#facc15', radius: 8, strokeWidth: 2, strokeColor: '#ffffff', opacity: 1 },
+  sunPointBelow: { color: '#b45309', radius: 6, strokeWidth: 2, strokeColor: '#78350f', opacity: 1 },
 
   // Moon arc — above / below horizon
-  moonArcAbove: { color: '#94a3b8', width: 2.5, opacity: 0.7 },
-  moonArcBelow: { color: '#475569', width: 1.5, opacity: 0.3, dasharray: [4, 4] },
+  moonArcAbove: { color: '#94a3b8', width: 3, opacity: 1 },
+  moonArcBelow: { color: '#475569', width: 3, opacity: 1, dasharray: [4, 0] },
 
   // Moon direction lines
-  moonDirLine:      { color: '#cbd5e1', width: 2, opacity: 0.8 },
-  moonDirLineBelow: { color: '#64748b', width: 1.5, opacity: 0.35, dasharray: [4, 3] },
-  moonriseLine:     { color: '#94a3b8', width: 2, opacity: 0.85 },
-  moonsetLine:      { color: '#64748b', width: 2, opacity: 0.85 },
+  moonDirLine:      { color: '#cbd5e1', width: 2, opacity: 1 },
+  moonDirLineBelow: { color: '#64748b', width: 1.5, opacity: 1, dasharray: [4, 0] },
+  moonriseLine:     { color: '#f87171', width: 2, opacity: 1 },
+  moonsetLine:      { color: '#9C78B7', width: 2, opacity: 1 },
+  moonCurrentLine:  { color: '#cbd5e1', width: 2, opacity: 1 },
+  moonCurrentBelow: { color: '#64748b', width: 1.5, opacity: 1, dasharray: [4, 0] },
 
   // Moon point
-  moonPoint:      { color: '#e2e8f0', radius: 6, strokeWidth: 2, strokeColor: '#64748b', opacity: 0.9 },
-  moonPointBelow: { color: '#475569', radius: 5, strokeWidth: 1, strokeColor: '#334155', opacity: 0.3 },
+  moonPoint:      { color: '#e2e8f0', radius: 8, strokeWidth: 2, strokeColor: '#64748b', opacity: 1 },
+  moonPointBelow: { color: '#475569', radius: 6, strokeWidth: 1, strokeColor: '#334155', opacity: 1 },
+
+  // Compass ticks and labels
+  compassMajorTick: { color: '#e2e8f0', width: 3, opacity: 1 },
+  compassMinorTick: { color: '#94a3b8', width: 2, opacity: 1 },
+  compassLabel: { color: '#f8fafc', haloColor: '#0f172a', haloWidth: 1.5, opacity: 1 },
+};
+
+export const COMPASS_THEME_STYLES = {
+  dark: {
+    majorTick: { color: '#e2e8f0' },
+    minorTick: { color: '#94a3b8' },
+    label: { color: '#f8fafc', haloColor: '#0f172a' },
+  },
+  light: {
+    majorTick: { color: '#0f172a' },
+    minorTick: { color: '#334155' },
+    label: { color: '#0f172a', haloColor: '#ffffff' },
+  },
 };
 
 /** Marker color for the pin on the map. */
@@ -158,7 +178,6 @@ export const API = {
   geocodingUrl:  'https://api.mapbox.com/geocoding/v5/mapbox.places',
   geocodingLimit: 5,
   timezoneUrl:   'https://timeapi.io/api/timezone/coordinate',
-  elevationUrl:  'https://epqs.nationalmap.gov/v1/json',
   /** Debounce delay in ms for geocoding search input. */
   searchDebounce: 300,
   /** Debounce delay in ms for coordinate/time updates. */
@@ -171,13 +190,6 @@ export const API = {
 export const LABELS = {
   appTitle:      'Zenith',
   searchPlaceholder: 'Search location…',
-
-  // Layer toggle
-  layers: {
-    dark:      { label: 'Dark',      icon: '⚫' },
-    light:     { label: 'Light',     icon: '⚪' },
-    satellite: { label: 'Satellite', icon: '🛰️' },
-  },
 
   // Date / Time controls
   dateLabel:     'Date',
@@ -209,7 +221,6 @@ export const LABELS = {
   timeFormat:       'Time Format',
   format24h:        '24h',
   format12h:        '12h AM/PM',
-  elevation:        'Elevation',
   civilTwilight:    'Civil Twilight',
   nauticalTwilight: 'Nautical Twilight',
   astroTwilight:    'Astronomical Twilight',
@@ -228,7 +239,6 @@ export const LABELS = {
   // Notifications
   geolocationDenied: 'Location access denied — using default coordinates.',
   timezoneFailed:    'Could not detect timezone — using UTC offset estimate.',
-  elevationFailed:   'Elevation data unavailable for this location.',
   geocodingFailed:   'Location search failed. Please try again.',
   mapLoadFailed:     'Map failed to load. Please refresh the page.',
   noData:            'Click the map to calculate…',
@@ -246,6 +256,7 @@ export default {
   OVERLAY_RADIUS,
   OVERLAY_ZOOM,
   MAP_LAYER_STYLES,
+  COMPASS_THEME_STYLES,
   MARKER_COLOR,
   TWILIGHT_COLORS,
   YEARLY_GRADIENT_PALETTE,
